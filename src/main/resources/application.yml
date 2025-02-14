@@ -1,0 +1,22 @@
+server:
+  port: 8080
+spring:
+  application:
+    name: fintech
+
+  datasource:
+    url: jdbc:mysql://localhost:3306/fintech?characterEncoding=UTF-8&serverTimezone=Asia/Seoul
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: fintech
+    password: 1
+
+# jpa
+  jpa:
+    generate-ddl: true
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+
+logging:
+  level:
+    org.springframework.security: debug
