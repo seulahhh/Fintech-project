@@ -29,17 +29,23 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
 	// spring security
 	implementation 'org.springframework.boot:spring-boot-starter-security'
-	//lombok
+	// lombok
 	compileOnly 'org.projectlombok:lombok'
 	annotationProcessor 'org.projectlombok:lombok'
 	// db driver
-	runtimeOnly 'com.h2database:h2'
-	runtimeOnly 'com.mysql:mysql-connector-j'
+	runtimeOnly 'com.h2database:h2' // test
+	runtimeOnly 'mysql:mysql-connector-java:8.0.33'
 	// test
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testImplementation 'org.springframework.security:spring-security-test'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
+	testImplementation 'org.mockito:mockito-core:4.11.0'
+	testImplementation 'org.mockito:mockito-inline:5.2.0'
+
+	// flyway
+	implementation 'org.flywaydb:flyway-core'
+	implementation 'org.flywaydb:flyway-mysql' // mysql 8.0 이상 사용 시 추가 필요
 	// jjwt
 	implementation 'io.jsonwebtoken:jjwt-api:0.12.6'
 	runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.6'
