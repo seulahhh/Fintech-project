@@ -25,8 +25,13 @@ repositories {
 
 dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-web'
-	// jpa
+	// spring boot validation api
+	implementation 'org.springframework.boot:spring-boot-starter-validation'
+	// mail template을 위한 thymleaf
+	implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
+	// JPA
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+	implementation 'org.springframework.data:spring-data-envers'
 	// spring security
 	implementation 'org.springframework.boot:spring-boot-starter-security'
 	// lombok
