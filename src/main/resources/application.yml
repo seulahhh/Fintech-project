@@ -35,3 +35,14 @@ springdoc:
     tags-sorter: alpha
     display-request-duration: true
     doc-expansion: none
+
+# brevo (verification email)
+brevo:
+  sender:
+    email: ssseulahhh@gmail.com
+    name: fintech service
+
+  link:
+    base-url: localhost:8080 # todo AWS 배포 후 domain 수정
+    verify-url:
+      email: /verify/email
