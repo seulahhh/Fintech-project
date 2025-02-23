@@ -19,7 +19,6 @@ public class UserTestDataBuilder {
     private Boolean isOtpRegistered;
 
     public UserTestDataBuilder() {
-        this.id = 1L;
         this.email = "random@random.com";
         this.password = "encodedPassword";
         this.phone = "01012341212";

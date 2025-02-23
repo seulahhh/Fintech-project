@@ -39,7 +39,7 @@ dependencies {
 	compileOnly 'org.projectlombok:lombok'
 	annotationProcessor 'org.projectlombok:lombok'
 	// db driver
-	runtimeOnly 'com.h2database:h2' // test
+	testImplementation ('com.h2database:h2') // test)
 	runtimeOnly 'mysql:mysql-connector-java:8.0.33'
 	// test
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
