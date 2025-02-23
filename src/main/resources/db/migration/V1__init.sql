@@ -11,7 +11,7 @@ CREATE TABLE users
     is_otp_registered BIT DEFAULT 0 NOT NULL,
     is_verified_email BIT DEFAULT 0 NOT NULL,
 
-    CONSTRAINT UNIQUE (email)
+    CONSTRAINT user_email_unique UNIQUE (email)
 );
 
 CREATE TABLE accounts
