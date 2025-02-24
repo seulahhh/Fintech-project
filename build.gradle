@@ -39,7 +39,7 @@ dependencies {
 	compileOnly 'org.projectlombok:lombok'
 	annotationProcessor 'org.projectlombok:lombok'
 	// db driver
-	testImplementation ('com.h2database:h2') // test)
+	testImplementation 'com.h2database:h2' // test)
 	runtimeOnly 'mysql:mysql-connector-java:8.0.33'
 	// test
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
@@ -67,6 +67,8 @@ dependencies {
 	implementation 'com.warrenstrange:googleauth:1.4.0'
 	// swagger
 	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.5'
+	//dotenv-java
+	implementation 'io.github.cdimascio:dotenv-java:2.2.0'
 }
 
 tasks.named('test') {

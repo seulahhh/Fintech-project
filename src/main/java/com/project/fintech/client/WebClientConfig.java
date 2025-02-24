@@ -1,6 +1,6 @@
 package com.project.fintech.client;
 
-import org.springframework.beans.factory.annotation.Value;
+import io.github.cdimascio.dotenv.Dotenv;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.reactive.function.client.ClientRequest;
@@ -8,8 +8,9 @@ import org.springframework.web.reactive.function.client.WebClient;
 
 @Configuration
 public class WebClientConfig {
-    @Value("${brevo.api.key}")
-    private String apiKey;
+    private static final Dotenv dotenv = Dotenv.load();
+    private final String apiKey = dotenv.get("BREVO_API_KEY");
+
 
     /**
      * Brevo Api Web Client
