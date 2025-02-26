@@ -4,6 +4,7 @@ import com.project.fintech.auth.otp.OtpUtil;
 import com.project.fintech.auth.otp.OtpVerificationDto;
 import com.project.fintech.client.EmailService;
 import com.project.fintech.client.SendVerificationEmailForm;
+import com.project.fintech.model.dto.EmailVerificationDto;
 import com.project.fintech.model.dto.RegisterRequestDto;
 import com.project.fintech.service.AuthService;
 import com.warrenstrange.googleauth.GoogleAuthenticatorKey;
@@ -40,15 +41,17 @@ public class RegisterApplication {
 
     /**
      * 이메일계정 인증을 완료한 뒤 OTP 등록 URL을 반환한다.
-     * @param email 가입요청한 사용자 email
+     * @param EmailVerificationDto 가입요청한 사용자 email
      * @return 사용자가 OTP 인증 서비스등록을 할 수 있는 Provisioning URL
      */
     @Transactional
-    public String completeEmailVerificationAndProvideOtpUrl(String email) {
-        authService.markEmailAsVerified(email);
+    public String completeEmailVerificationAndProvideOtpUrl(
+        EmailVerificationDto EmailVerificationDto) {
+        String userEmail = EmailVerificationDto.getEmail();
+        authService.markEmailAsVerified(userEmail);
         GoogleAuthenticatorKey otpSecretKey = otpUtil.createOtpSecretKey();
-        String provisioningUrl = otpUtil.createProvisioningUrl(email, otpSecretKey);
-        authService.saveOtpSecretKey(provisioningUrl, email);
+        String provisioningUrl = otpUtil.createProvisioningUrl(userEmail, otpSecretKey);
+        authService.saveOtpSecretKey(provisioningUrl, userEmail);
         return provisioningUrl;
     }
 

@@ -3,6 +3,7 @@ package com.project.fintech.api;
 import com.project.fintech.application.RegisterApplication;
 import com.project.fintech.auth.otp.OtpVerificationDto;
 import com.project.fintech.model.dto.RegisterRequestDto;
+import com.project.fintech.model.dto.EmailVerificationDto;
 import com.project.fintech.model.type.Message;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -10,7 +11,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @Slf4j
@@ -40,9 +40,10 @@ public class RegisterController {
      * @return OTP 등록 가능한 provisioning uri
      */
     @PostMapping("/auth/email/verify")
-    public ResponseEntity<String> verifyEmail(@RequestParam String email) {
+    public ResponseEntity<String> verifyEmail(@Valid @RequestBody EmailVerificationDto EmailVerificationDto) {
 
-        return ResponseEntity.ok(registerApplication.completeEmailVerificationAndProvideOtpUrl(email));
+        return ResponseEntity.ok(registerApplication.completeEmailVerificationAndProvideOtpUrl(
+            EmailVerificationDto));
     }
 
     /**
