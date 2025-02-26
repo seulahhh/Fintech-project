@@ -34,6 +34,7 @@ public class EmailService {
 
     /**
      * Brevo API 호출을 위한 EmailRequest 생성 및 세팅
+     *
      * @param sendVerificationEmailForm
      * @return EmailRequest
      */
@@ -86,11 +87,4 @@ public class EmailService {
             .name(registerRequestDto.getName()).url(emailVerificationUri).build(); // todo Link 수정
     }
 
-    /**
-     * URI를 담은 a 태그 생성
-     * (thymeleaf template 방식 사용 안하게 될 시 사용)
-     */
-    public String createLinkHtml(String uri) {
-        return "<a href=\"" + uri + "\"></a>";
-    }
 }
