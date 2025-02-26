@@ -29,7 +29,7 @@ public class AuthService {
      * @return 중복 여부
      */
     public void isNotDuplicateEmail(String email) {
-        if (userRepository.findByEmail(email).isPresent()) {
+        if (userRepository.existsByEmail(email)) {
             throw new CustomException(ErrorCode.ALREADY_EXIST_EMAIL);
         }
     }
