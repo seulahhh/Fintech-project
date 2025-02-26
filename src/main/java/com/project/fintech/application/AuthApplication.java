@@ -30,7 +30,7 @@ public class AuthApplication {
      */
     public void completeOtpReissue(OtpVerificationDto otpVerificationDto) {
         String email = otpVerificationDto.getEmail();
-        int code = otpVerificationDto.getOtpCode();
+        int code = Integer.parseInt(otpVerificationDto.getOtpCode());
         authService.validateOtpCode(code , email);
         authService.markOtpAsRegistered(email);
     }
@@ -41,7 +41,7 @@ public class AuthApplication {
      */
     public void executeOtpVerification(OtpVerificationDto otpVerificationDto) {
         String email = otpVerificationDto.getEmail();
-        int code = otpVerificationDto.getOtpCode();
+        int code = Integer.parseInt(otpVerificationDto.getOtpCode());
         authService.validateOtpCode(code, email);
         // todo + 추후 redis에 OTP 인증 1회당 지속 유효시간과 함께 올리는 로직 추가
     }

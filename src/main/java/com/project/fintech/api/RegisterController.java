@@ -53,7 +53,7 @@ public class RegisterController {
      * @return 등록 완료 message
      */
     @PostMapping("/auth/otp/register")
-    public ResponseEntity<Message> registerOtp(@RequestBody OtpVerificationDto otpVerificationDto) {
+    public ResponseEntity<Message> registerOtp(@Valid @RequestBody OtpVerificationDto otpVerificationDto) {
         registerApplication.completeOtpRegistration(otpVerificationDto);
 
         return ResponseEntity.ok(Message.COMPLETE_REGISTERED_OTP);

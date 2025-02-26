@@ -57,13 +57,12 @@ public class RegisterApplication {
 
     /**
      * 발급한 secretKey로 OTP 인증을 마치면 OTP 등록여부를 완료처리한다.
-     * @param email 사용자 이메일
-     * @param code OTP 코드
+     * @param otpVerificationDto
      */
     @Transactional
     public void completeOtpRegistration(OtpVerificationDto otpVerificationDto) {
         String email = otpVerificationDto.getEmail();
-        int otpCode = otpVerificationDto.getOtpCode();
+        int otpCode = Integer.parseInt(otpVerificationDto.getOtpCode());
         authService.validateOtpCode(otpCode, email);
         // 인증 실패시 Exception을 던지고, 성공 시 이하 로직 수행
         authService.markOtpAsRegistered(email);
