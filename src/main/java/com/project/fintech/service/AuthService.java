@@ -1,5 +1,7 @@
 package com.project.fintech.service;
 
+import com.project.fintech.auth.CustomUserDetailsService;
+import com.project.fintech.auth.jwt.JwtUtil;
 import com.project.fintech.auth.otp.OtpUtil;
 import com.project.fintech.exception.CustomException;
 import com.project.fintech.exception.ErrorCode;
@@ -8,7 +10,14 @@ import com.project.fintech.persistence.entity.OtpSecretKey;
 import com.project.fintech.persistence.entity.User;
 import com.project.fintech.persistence.repository.OtpSecretKeyRepository;
 import com.project.fintech.persistence.repository.UserRepository;
+import java.util.Date;
+import java.util.concurrent.TimeUnit;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,8 +29,15 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final OtpUtil otpUtil;
+    private final JwtUtil jwtUtil;
     private final OtpSecretKeyRepository otpSecretKeyRepository;
+    private final CustomUserDetailsService customUserDetailsService;
+    private final StringRedisTemplate stringRedisTemplate;
 
+    @Value("${redis.key.prefix.refresh-token}")
+    private String REFRESH_TOKEN_PREFIX;
+    @Value("${redis.key.prefix.disabled-token}")
+    private String DISABLED_TOKEN_PREFIX;
     /**
      * 이메일 중복 여부 체크
      *
@@ -110,7 +126,57 @@ public class AuthService {
         String userSecretKey = getUserSecretKey(email);
         boolean codeValid = otpUtil.isCodeValid(userSecretKey, code);
         if (!codeValid) {
-            throw new CustomException(ErrorCode.NOT_VALID_OTP_CODE);
+            throw new CustomException(ErrorCode.INVALID_OTP_CODE);
+        }
+    }
+
+    /**
+     * token정보로 Authentication 객체 생성
+     * @param token
+     * @return Authentication 객체
+     */
+    public Authentication getAuthenticationByToken(String token) {
+        String email = jwtUtil.getEmailFromToken(token);
+        UserDetails userDetails = customUserDetailsService.loadUserByUsername(email);
+        return new UsernamePasswordAuthenticationToken(userDetails, null,
+            userDetails.getAuthorities());
+    }
+
+    /**
+     * Redis에서 Refresh Token 삭제 (로그아웃 혹은 access 토큰 재발급 시)
+     * @param refreshToken
+     */
+    public void invalidateRefreshToken(String refreshToken) {
+        if (!stringRedisTemplate.hasKey(REFRESH_TOKEN_PREFIX + refreshToken)) {
+            throw new CustomException(ErrorCode.TOKEN_NOT_EXIST);
+        }
+        stringRedisTemplate.delete(REFRESH_TOKEN_PREFIX + refreshToken);
+    }
+
+    /**
+     * Redis에 Refresh Token 저장
+     * key - JWT_REFRESH_TOKEN::{refresh token}//
+     * value - user email
+     * @param token refresh Token
+     */
+    public void storeRefreshToken(String token, String email) {
+        stringRedisTemplate.opsForValue()
+            .set(REFRESH_TOKEN_PREFIX + token, email, 7, TimeUnit.DAYS);
+    }
+
+    /**
+     * Redis에 Access Token을 black list에 저장
+     * @param token
+     */
+    public void addAccessTokenBlackList(String token) {
+        Date expiration = jwtUtil.getTokenExpiration(token);
+        String email = jwtUtil.getEmailFromToken(token);
+        Date current = new Date(System.currentTimeMillis());
+
+        if (current.before(expiration)) {
+            long diffInMillies = expiration.getTime() - current.getTime();
+            stringRedisTemplate.opsForValue()
+                .set(DISABLED_TOKEN_PREFIX + email, token, diffInMillies, TimeUnit.SECONDS);
         }
     }
 }
