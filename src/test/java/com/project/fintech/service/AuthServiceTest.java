@@ -51,7 +51,7 @@ class AuthServiceTest {
     void isNotDuplicateEmail_Success() {
         //given
         String email = "test@test.com";
-        when(userRepository.findByEmail(email)).thenReturn(Optional.empty());
+        when(userRepository.existsByEmail(email)).thenReturn(false);
 
         //when & then
         assertThatCode(() -> authService.isNotDuplicateEmail(email)).doesNotThrowAnyException();
@@ -63,7 +63,7 @@ class AuthServiceTest {
         //given
         User user = new UserTestDataBuilder().build();
         String email = user.getEmail();
-        when(userRepository.findByEmail(email)).thenReturn(Optional.of(user));
+        when(userRepository.existsByEmail(email)).thenReturn(true);
 
         //when & then
         assertThatThrownBy(() -> authService.isNotDuplicateEmail(email)).isInstanceOf(
@@ -79,7 +79,7 @@ class AuthServiceTest {
             email).build();
         String encodedPassword = "encodedPassword";
         when(passwordEncoder.encode(registerRequestDto.getPassword())).thenReturn(encodedPassword);
-        when(userRepository.findByEmail(email)).thenReturn(Optional.empty());
+        when(userRepository.existsByEmail(email)).thenReturn(false);
         when(userRepository.save(any(User.class))).thenAnswer(
             invocation -> invocation.getArgument(0));
 
@@ -105,7 +105,7 @@ class AuthServiceTest {
         String email = user.getEmail();
         RegisterRequestDto registerRequestDto = new RegisterRequestDtoTestDataBuilder().withEmail(
             email).build();
-        when(userRepository.findByEmail(email)).thenReturn(Optional.of(user));
+        when(userRepository.existsByEmail(email)).thenReturn(true);
 
         //when&then
         assertThatThrownBy(
