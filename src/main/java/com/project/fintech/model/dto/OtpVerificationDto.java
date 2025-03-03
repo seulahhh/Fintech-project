@@ -1,4 +1,4 @@
-package com.project.fintech.auth.otp;
+package com.project.fintech.model.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
