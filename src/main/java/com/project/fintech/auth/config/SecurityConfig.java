@@ -2,6 +2,7 @@ package com.project.fintech.auth.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.project.fintech.application.AuthApplication;
+import com.project.fintech.auth.constants.SecurityPathConstants;
 import com.project.fintech.auth.jwt.JwtFilter;
 import com.project.fintech.auth.springsecurity.CustomAuthenticationFilter;
 import com.project.fintech.auth.springsecurity.CustomLogoutHandler;
@@ -49,16 +50,17 @@ public class SecurityConfig {
         http.csrf(AbstractHttpConfigurer::disable).sessionManagement(
                 session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(
-                auth -> auth.requestMatchers("/auth/login", "/error", "/auth/logout", "/", "/swagger-ui/**", "/v3/**", "/swagger-resources/**", "/api-docs/**").permitAll()
-                    .requestMatchers(HttpMethod.POST, "/users").permitAll()
-                    .anyRequest().authenticated()
-            ).formLogin(AbstractHttpConfigurer::disable)
+                auth ->
+                    auth.requestMatchers(SecurityPathConstants.publicEndPoints).permitAll()
+                        .requestMatchers(HttpMethod.POST, "/users").permitAll().anyRequest()
+                        .authenticated()).formLogin(AbstractHttpConfigurer::disable)
             .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterAt(customAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
-            .logout(logout -> logout.logoutUrl("/auth/logout").addLogoutHandler(customLogoutHandler)
-                .logoutSuccessHandler((request, response, authentication) -> {
-                    response.setStatus(HttpStatus.OK.value());
-                }));
+            .logout(logout ->
+                logout.logoutUrl("/auth/logout").addLogoutHandler(customLogoutHandler)
+                    .logoutSuccessHandler((request, response, authentication) -> {
+                        response.setStatus(HttpStatus.OK.value());
+                    }));
 
         return http.build();
     }

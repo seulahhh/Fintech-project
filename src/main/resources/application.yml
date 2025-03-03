@@ -56,10 +56,3 @@ brevo:
     base-url: localhost:8080 # todo AWS 배포 후 domain 수정
     verify-url:
       email: /auth/email/verify
-
-# redis keys
-redis:
-  key:
-    prefix:
-      disabled-token: 'JWT_BLACKLIST::'
-      refresh-token: 'JWT_REFRESH_TOKEN::'

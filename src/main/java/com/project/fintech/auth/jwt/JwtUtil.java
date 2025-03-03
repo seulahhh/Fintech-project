@@ -1,5 +1,6 @@
 package com.project.fintech.auth.jwt;
 
+import com.project.fintech.auth.constants.RedisKeyConstants;
 import com.project.fintech.exception.CustomException;
 import com.project.fintech.exception.ErrorCode;
 import io.jsonwebtoken.ExpiredJwtException;
@@ -22,8 +23,6 @@ public class JwtUtil {
     private final StringRedisTemplate stringRedisTemplate;
     private final String TOKEN_ISSUER = "Fintech_Service";
     SecretKey key = Jwts.SIG.HS256.key().build();
-    @Value("${redis.key.prefix.disabled-token}")
-    private String DISABLED_TOKEN_PREFIX;
 
     /**
      * JWT Token basic builder 생성
@@ -86,7 +85,7 @@ public class JwtUtil {
      * @return true / false
      */
     public void verifyToken(String token) throws JwtException {
-        if (stringRedisTemplate.hasKey(DISABLED_TOKEN_PREFIX + token)) {
+        if (stringRedisTemplate.hasKey(RedisKeyConstants.DISABLED_TOKEN_PREFIX + token)) {
             throw new CustomException(ErrorCode.INVALID_TOKEN);
         }
         try {

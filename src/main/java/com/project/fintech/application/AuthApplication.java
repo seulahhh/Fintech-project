@@ -1,5 +1,6 @@
 package com.project.fintech.application;
 
+import com.project.fintech.auth.constants.RedisKeyConstants;
 import com.project.fintech.model.dto.ResponseDto;
 import com.project.fintech.auth.jwt.JwtUtil;
 import com.project.fintech.auth.otp.OtpUtil;
@@ -31,13 +32,6 @@ public class AuthApplication {
     private final AuthService authService;
     private final JwtUtil jwtUtil;
     private final StringRedisTemplate stringRedisTemplate;
-
-    @Value("${redis.key.prefix.refresh-token}")
-    private String REFRESH_TOKEN_PREFIX;
-
-    @Value("${redis.key.prefix.disabled-token}")
-    private String DISABLED_TOKEN_PREFIX;
-
 
     /**
      * OTP 재발급 시작하는 흐름
@@ -101,7 +95,7 @@ public class AuthApplication {
         String requestRefreshToken = issueTokenRequestDto.getRefreshToken();
         String email = issueTokenRequestDto.getEmail();
 
-        String storedRefreshToken = stringRedisTemplate.opsForValue().get(REFRESH_TOKEN_PREFIX + requestRefreshToken);
+        String storedRefreshToken = stringRedisTemplate.opsForValue().get(RedisKeyConstants.REFRESH_TOKEN_PREFIX + requestRefreshToken);
         if (storedRefreshToken == null) {
             throw new CustomException(ErrorCode.TOKEN_NOT_EXIST);
         }

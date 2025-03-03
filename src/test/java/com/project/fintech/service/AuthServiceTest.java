@@ -12,6 +12,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.project.fintech.auth.CustomUserDetailsService;
+import com.project.fintech.auth.constants.RedisKeyConstants;
 import com.project.fintech.auth.jwt.JwtUtil;
 import com.project.fintech.auth.otp.OtpUtil;
 import com.project.fintech.builder.RegisterRequestDtoTestDataBuilder;
@@ -33,7 +34,6 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.security.core.Authentication;
@@ -69,12 +69,6 @@ class AuthServiceTest {
 
     @InjectMocks
     AuthService authService;
-
-    @Value("${redis.key.prefix.disabled-token}")
-    private String DISABLED_TOKEN_PREFIX;
-
-    @Value("${redis.key.prefix.refresh-token}")
-    private String REFRESH_TOKEN_PREFIX;
 
     @Test
     @DisplayName("이메일 중복 여부 체크 - 성공")
@@ -355,13 +349,15 @@ class AuthServiceTest {
     void invalidateRefreshToken_Success() {
         //given
         String refreshToken = "1234ABC";
-        when(stringRedisTemplate.hasKey(REFRESH_TOKEN_PREFIX + refreshToken)).thenReturn(true);
+        when(stringRedisTemplate.hasKey(
+            RedisKeyConstants.REFRESH_TOKEN_PREFIX + refreshToken)).thenReturn(true);
 
         //when
         authService.invalidateRefreshToken(refreshToken);
 
         //then
-        verify(stringRedisTemplate, times(1)).delete(REFRESH_TOKEN_PREFIX + refreshToken);
+        verify(stringRedisTemplate, times(1)).delete(
+            RedisKeyConstants.REFRESH_TOKEN_PREFIX + refreshToken);
     }
 
     @Test
@@ -369,7 +365,8 @@ class AuthServiceTest {
     void invalidateRefreshToken_Fail_WhenNotFoundToken() {
         //given
         String refreshToken = "1234ABC";
-        when(stringRedisTemplate.hasKey(REFRESH_TOKEN_PREFIX + refreshToken)).thenReturn(false);
+        when(stringRedisTemplate.hasKey(
+            RedisKeyConstants.REFRESH_TOKEN_PREFIX + refreshToken)).thenReturn(false);
         // when & then
         assertThatThrownBy(() -> authService.invalidateRefreshToken(refreshToken)).isInstanceOf(
             CustomException.class).extracting("errorCode").isEqualTo(ErrorCode.TOKEN_NOT_EXIST);
@@ -385,7 +382,8 @@ class AuthServiceTest {
         //when
         authService.storeRefreshToken(token, email);
         //then
-        verify(valueOperations, times(1)).set(eq(REFRESH_TOKEN_PREFIX + token), eq(email), eq(7L),
+        verify(valueOperations, times(1)).set(eq(RedisKeyConstants.REFRESH_TOKEN_PREFIX + token),
+            eq(email), eq(7L),
             eq(TimeUnit.DAYS));
     }
 
@@ -404,7 +402,8 @@ class AuthServiceTest {
         authService.addAccessTokenBlackList(token);
 
         //then
-        verify(valueOperations, times(1)).set(eq(DISABLED_TOKEN_PREFIX + email), eq(token),
+        verify(valueOperations, times(1)).set(eq(RedisKeyConstants.DISABLED_TOKEN_PREFIX + email),
+            eq(token),
             anyLong(), eq(TimeUnit.SECONDS));
     }
 
@@ -422,7 +421,8 @@ class AuthServiceTest {
         authService.addAccessTokenBlackList(token);
 
         //then
-        verify(valueOperations, never()).set(eq(DISABLED_TOKEN_PREFIX + email), eq(token),
+        verify(valueOperations, never()).set(eq(RedisKeyConstants.DISABLED_TOKEN_PREFIX + email),
+            eq(token),
             anyLong(), eq(TimeUnit.SECONDS));
     }
 }
