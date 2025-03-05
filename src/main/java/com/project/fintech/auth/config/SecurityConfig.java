@@ -2,14 +2,12 @@ package com.project.fintech.auth.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.project.fintech.application.AuthApplication;
-import com.project.fintech.auth.constants.SecurityPathConstants;
 import com.project.fintech.auth.jwt.JwtFilter;
 import com.project.fintech.auth.springsecurity.CustomAuthenticationFilter;
 import com.project.fintech.auth.springsecurity.CustomLogoutHandler;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -28,6 +26,8 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @RequiredArgsConstructor
 public class SecurityConfig {
 
+    public static final String[] publicEndPoints = {"/auth/login", "/auth/jwt/issue", "/error",
+        "/auth/logout", "/", "/swagger-ui/**", "/v3/**", "/swagger-resources/**", "/api-docs/**"};
     private final AuthApplication authApplication;
     private final PasswordEncoder passwordEncoder;
     private final UserDetailsService userDetailsService;
@@ -43,7 +43,9 @@ public class SecurityConfig {
             objectMapper);
 //        OtpFilter otpFilter = new OtpFilter();
 
-        http.authenticationProvider(daoAuthenticationProvider(userDetailsService, passwordEncoder));
+        http.authenticationProvider(daoAuthenticationProvider(userDetailsService, passwordEncoder))
+            .anonymous(AbstractHttpConfigurer::disable);
+
         customAuthenticationFilter.setAuthenticationManager(authenticationManager);
         customAuthenticationFilter.setFilterProcessesUrl("/auth/login");
 
@@ -51,7 +53,7 @@ public class SecurityConfig {
                 session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(
                 auth ->
-                    auth.requestMatchers(SecurityPathConstants.publicEndPoints).permitAll()
+                    auth.requestMatchers(publicEndPoints).permitAll()
                         .requestMatchers(HttpMethod.POST, "/users").permitAll().anyRequest()
                         .authenticated()).formLogin(AbstractHttpConfigurer::disable)
             .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
@@ -66,7 +68,6 @@ public class SecurityConfig {
     }
 
     @Bean
-    @Lazy
     public AuthenticationProvider daoAuthenticationProvider(UserDetailsService userDetailsService,
         PasswordEncoder passwordEncoder) {
         DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
@@ -76,7 +77,6 @@ public class SecurityConfig {
     }
 
     @Bean
-    @Lazy
     public AuthenticationManager authenticationManager(AuthenticationConfiguration configuration)
         throws Exception {
         return configuration.getAuthenticationManager();
