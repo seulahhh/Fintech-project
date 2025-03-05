@@ -45,7 +45,6 @@ public class CustomAuthenticationFilter extends UsernamePasswordAuthenticationFi
     protected void successfulAuthentication(HttpServletRequest request,
         HttpServletResponse response, FilterChain chain, Authentication authResult)
         throws IOException, ServletException {
-        ObjectMapper objectMapper = new ObjectMapper();
 
         response.setContentType("application/json;charset=UTF-8");
         TokenPairDto tokenPairDto = authApplication.issueTokenPair(authResult.getName());
