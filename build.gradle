@@ -48,7 +48,8 @@ dependencies {
 
 	testImplementation 'org.mockito:mockito-core:4.11.0'
 	testImplementation 'org.mockito:mockito-inline:5.2.0'
-
+	// MockWebServer
+	testImplementation 'com.squareup.okhttp3:mockwebserver:4.9.2'
 	// flyway
 	implementation 'org.flywaydb:flyway-core'
 	implementation 'org.flywaydb:flyway-mysql' // mysql 8.0 이상 사용 시 추가 필요
@@ -72,6 +73,7 @@ dependencies {
 	// Redis
 	implementation 'org.springframework.boot:spring-boot-starter-data-redis'
 	implementation 'org.springframework.data:spring-data-redis'
+	testImplementation 'com.github.codemonstur:embedded-redis:1.4.3'
 
 }
 
