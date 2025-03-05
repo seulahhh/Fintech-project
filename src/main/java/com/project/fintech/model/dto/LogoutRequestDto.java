@@ -2,9 +2,11 @@ package com.project.fintech.model.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
+import lombok.Builder;
 import lombok.Data;
 
 @Data
+@Builder
 @Schema(name = "LogoutRequestDto", description = "로그인 api 호출 시 필요한 DTO")
 public class LogoutRequestDto {
 
