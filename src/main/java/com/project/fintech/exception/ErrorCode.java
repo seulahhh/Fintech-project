@@ -18,7 +18,9 @@ public enum ErrorCode {
     REFRESH_TOKEN_USER_MISMATCH("Refresh Token의 사용자가 일치하지 않습니다.", "AUTH-009", HttpStatus.BAD_REQUEST),
     LOGIN_REQUEST_FAIL("로그인 인증에 실패하였습니다.", "AUTH-010", HttpStatus.BAD_REQUEST),
 
-    IO_OPERATION_FAILED("입출력 작업 중 오류가 발생했습니다.", "IO-001", HttpStatus.INTERNAL_SERVER_ERROR)
+    IO_OPERATION_FAILED("입출력 작업 중 오류가 발생했습니다.", "IO-001", HttpStatus.BAD_REQUEST),
+
+    INTERNAL_SERVER_ERROR("서버 내부 오류가 발생하였습니다", "SERVER", HttpStatus.INTERNAL_SERVER_ERROR)
     ;
 
     private final String detail;
