@@ -3,8 +3,10 @@ package com.project.fintech.auth.config;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.project.fintech.application.AuthApplication;
 import com.project.fintech.auth.jwt.JwtFilter;
+import com.project.fintech.auth.springsecurity.CustomAuthenticationEntryPoint;
 import com.project.fintech.auth.springsecurity.CustomAuthenticationFilter;
 import com.project.fintech.auth.springsecurity.CustomLogoutHandler;
+import com.project.fintech.exception.ExceptionHandlingFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -33,7 +35,8 @@ public class SecurityConfig {
     private final UserDetailsService userDetailsService;
     private final JwtFilter jwtFilter;
     private final ObjectMapper objectMapper;
-
+    private final CustomAuthenticationEntryPoint customAuthenticationEntryPoint;
+    private final ExceptionHandlingFilter exceptionHandlingFilter;
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http,
         AuthenticationManager authenticationManager) throws Exception {
@@ -54,8 +57,9 @@ public class SecurityConfig {
             .authorizeHttpRequests(
                 auth ->
                     auth.requestMatchers(publicEndPoints).permitAll()
-                        .requestMatchers(HttpMethod.POST, "/users").permitAll().anyRequest()
-                        .authenticated()).formLogin(AbstractHttpConfigurer::disable)
+                        .requestMatchers(HttpMethod.POST, "/users").permitAll().anyRequest().authenticated())
+            .formLogin(AbstractHttpConfigurer::disable)
+            .addFilterBefore(exceptionHandlingFilter, CustomAuthenticationFilter.class )
             .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterAt(customAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
             .logout(logout ->
@@ -63,6 +67,7 @@ public class SecurityConfig {
                     .logoutSuccessHandler((request, response, authentication) -> {
                         response.setStatus(HttpStatus.OK.value());
                     }));
+        http.exceptionHandling(exHandling -> exHandling.authenticationEntryPoint(customAuthenticationEntryPoint));
 
         return http.build();
     }

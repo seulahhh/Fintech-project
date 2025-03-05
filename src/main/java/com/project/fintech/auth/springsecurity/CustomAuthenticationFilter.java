@@ -14,6 +14,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.authentication.InternalAuthenticationServiceException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
@@ -38,6 +39,8 @@ public class CustomAuthenticationFilter extends UsernamePasswordAuthenticationFi
             return getAuthenticationManager().authenticate(authenticationToken);
         } catch (IOException e) {
             throw new CustomException(ErrorCode.IO_OPERATION_FAILED);
+        } catch (InternalAuthenticationServiceException e) {
+            throw new CustomException(ErrorCode.NOT_FOUND_USER);
         }
     }
 

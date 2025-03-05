@@ -1,0 +1,61 @@
+server:
+  port: 8080
+  servlet:
+    encoding:
+      force-response: true
+spring:
+  application:
+    name: fintech
+# mysql
+  datasource:
+    url: jdbc:mysql://localhost:3306/fintech?characterEncoding=UTF-8&serverTimezone=Asia/Seoul
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: fintech
+    password: 1
+
+# redis
+  data:
+    redis:
+      port: 6379
+      host: localhost # todo AWS 배포시 host 수정
+      password: ""
+# flyway
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    validate-on-migrate: true
+    locations: classpath:db/migration
+
+  sql:
+    init:
+      mode: never
+  # jpa
+  jpa:
+    generate-ddl: true
+    hibernate:
+      ddl-auto: none
+    show-sql: true
+
+logging:
+  level:
+    org.springframework.security: debug
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
+    tags-sorter: alpha
+    display-request-duration: true
+    doc-expansion: none
+
+# brevo (verification email)
+brevo:
+  sender:
+    email: ssseulahhh@gmail.com
+    name: fintech service
+
+  link:
+    base-url: localhost:8080 # todo AWS 배포 후 domain 수정
+    verify-url:
+      email: /auth/email/verify
