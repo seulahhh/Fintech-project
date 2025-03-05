@@ -1,6 +1,5 @@
 package com.project.fintech.auth.jwt;
 
-import com.project.fintech.auth.constants.RedisKeyConstants;
 import com.project.fintech.exception.CustomException;
 import com.project.fintech.exception.ErrorCode;
 import io.jsonwebtoken.ExpiredJwtException;
@@ -11,16 +10,14 @@ import java.util.Date;
 import javax.crypto.SecretKey;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.stereotype.Service;
+import org.springframework.stereotype.Component;
 
 @Slf4j
-@Service
+@Component
 @RequiredArgsConstructor
 public class JwtUtil {
 
-    private final StringRedisTemplate stringRedisTemplate;
     private final String TOKEN_ISSUER = "Fintech_Service";
     SecretKey key = Jwts.SIG.HS256.key().build();
 
@@ -85,9 +82,6 @@ public class JwtUtil {
      * @return true / false
      */
     public void verifyToken(String token) throws JwtException {
-        if (stringRedisTemplate.hasKey(RedisKeyConstants.DISABLED_TOKEN_PREFIX + token)) {
-            throw new CustomException(ErrorCode.INVALID_TOKEN);
-        }
         try {
             Jwts.parser().verifyWith(key).build().parse(token);
         } catch (ExpiredJwtException e) {

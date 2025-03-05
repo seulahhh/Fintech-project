@@ -1,7 +1,6 @@
 package com.project.fintech.service;
 
 import com.project.fintech.auth.CustomUserDetailsService;
-import com.project.fintech.auth.constants.RedisKeyConstants;
 import com.project.fintech.auth.jwt.JwtUtil;
 import com.project.fintech.auth.otp.OtpUtil;
 import com.project.fintech.exception.CustomException;
@@ -33,6 +32,9 @@ public class AuthService {
     private final OtpSecretKeyRepository otpSecretKeyRepository;
     private final CustomUserDetailsService customUserDetailsService;
     private final StringRedisTemplate stringRedisTemplate;
+
+    public static final String DISABLED_TOKEN_PREFIX = "JWT_BLACKLIST::";
+    public static final String REFRESH_TOKEN_PREFIX = "JWT_REFRESH_TOKEN::";
 
     /**
      * 이메일 중복 여부 체크
@@ -149,10 +151,10 @@ public class AuthService {
      * @param refreshToken
      */
     public void invalidateRefreshToken(String refreshToken) {
-        if (!stringRedisTemplate.hasKey(RedisKeyConstants.REFRESH_TOKEN_PREFIX + refreshToken)) {
+        if (!stringRedisTemplate.hasKey(REFRESH_TOKEN_PREFIX + refreshToken)) {
             throw new CustomException(ErrorCode.TOKEN_NOT_EXIST);
         }
-        stringRedisTemplate.delete(RedisKeyConstants.REFRESH_TOKEN_PREFIX + refreshToken);
+        stringRedisTemplate.delete(REFRESH_TOKEN_PREFIX + refreshToken);
     }
 
     /**
@@ -162,8 +164,9 @@ public class AuthService {
      */
     public void storeRefreshToken(String token, String email) {
         stringRedisTemplate.opsForValue()
-            .set(RedisKeyConstants.REFRESH_TOKEN_PREFIX + token, email, 7, TimeUnit.DAYS);
+            .set(REFRESH_TOKEN_PREFIX + token, email, 7, TimeUnit.DAYS);
     }
+
 
     /**
      * Redis에 Access Token을 black list에 저장
@@ -178,8 +181,39 @@ public class AuthService {
         if (current.before(expiration)) {
             long diffInMillies = expiration.getTime() - current.getTime();
             stringRedisTemplate.opsForValue()
-                .set(RedisKeyConstants.DISABLED_TOKEN_PREFIX + email, token, diffInMillies,
+                .set(DISABLED_TOKEN_PREFIX + token, email, diffInMillies,
                     TimeUnit.SECONDS);
+        }
+    }
+
+    /**
+     * Redis에서 Refresh token 키의 value와 user를 비교하여 저장된 refresh token의 유효성 확인
+     *
+     * @param token refresh token
+     * @param email user email
+     */
+    public void verifyRefreshTokenEmailPair(String token, String email) {
+        String userEmail = stringRedisTemplate.opsForValue()
+            .get(REFRESH_TOKEN_PREFIX + token);
+        if (userEmail == null) {
+            throw new CustomException(ErrorCode.TOKEN_NOT_EXIST);
+        } else if (!userEmail.equals(email)) {
+            throw new CustomException(ErrorCode.REFRESH_TOKEN_USER_MISMATCH);
+        }
+    }
+
+    /**
+     * Redis에 사용자의 access token이 black list로 저장되어 있지 않은지 확인
+     *
+     * @param token
+     * @param email
+     */
+    public void verifyNotDisabledAccessToken(String token, String email) {
+        String userEmail = stringRedisTemplate.opsForValue()
+            .get(DISABLED_TOKEN_PREFIX + token);
+        if (stringRedisTemplate.hasKey(DISABLED_TOKEN_PREFIX + token)
+            && userEmail.equals(email)) {
+            throw new CustomException(ErrorCode.INVALID_TOKEN);
         }
     }
 }

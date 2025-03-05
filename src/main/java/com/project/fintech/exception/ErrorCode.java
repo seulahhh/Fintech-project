@@ -15,7 +15,8 @@ public enum ErrorCode {
     INVALID_TOKEN("토큰이 유효하지 않습니다.", "AUTH-006", HttpStatus.BAD_REQUEST),
     TOKEN_EXPIRED("토큰이 만료 되었습니다.", "AUTH-007", HttpStatus.BAD_REQUEST),
     TOKEN_NOT_EXIST("토큰이 존재하지 않습니다.", "AUTH-008", HttpStatus.BAD_REQUEST),
-    LOGIN_REQUEST_FAIL("로그인 인증에 실패하였습니다.", "AUTH-009", HttpStatus.BAD_REQUEST),
+    REFRESH_TOKEN_USER_MISMATCH("Refresh Token의 사용자가 일치하지 않습니다.", "AUTH-009", HttpStatus.BAD_REQUEST),
+    LOGIN_REQUEST_FAIL("로그인 인증에 실패하였습니다.", "AUTH-010", HttpStatus.BAD_REQUEST),
 
     IO_OPERATION_FAILED("입출력 작업 중 오류가 발생했습니다.", "IO-001", HttpStatus.INTERNAL_SERVER_ERROR)
     ;

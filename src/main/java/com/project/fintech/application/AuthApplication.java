@@ -1,23 +1,18 @@
 package com.project.fintech.application;
 
-import com.project.fintech.auth.constants.RedisKeyConstants;
 import com.project.fintech.model.dto.ResponseDto;
 import com.project.fintech.auth.jwt.JwtUtil;
 import com.project.fintech.auth.otp.OtpUtil;
 import com.project.fintech.model.dto.OtpVerificationDto;
 import com.project.fintech.service.AuthService;
-import com.project.fintech.exception.CustomException;
-import com.project.fintech.exception.ErrorCode;
 import com.project.fintech.model.dto.IssueTokenRequestDto;
 import com.project.fintech.model.dto.LogoutRequestDto;
 import com.project.fintech.model.dto.TokenPairDto;
 import com.project.fintech.model.type.Message;
 import com.warrenstrange.googleauth.GoogleAuthenticatorKey;
 import jakarta.servlet.http.HttpServletResponse;
-import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -30,7 +25,6 @@ public class AuthApplication {
     private final OtpUtil otpUtil;
     private final AuthService authService;
     private final JwtUtil jwtUtil;
-    private final StringRedisTemplate stringRedisTemplate;
 
     /**
      * OTP 재발급 시작하는 흐름
@@ -93,28 +87,19 @@ public class AuthApplication {
         IssueTokenRequestDto issueTokenRequestDto) {
         String requestRefreshToken = issueTokenRequestDto.getRefreshToken();
         String email = issueTokenRequestDto.getEmail();
+        authService.verifyRefreshTokenEmailPair(requestRefreshToken, email);
+        jwtUtil.verifyToken(requestRefreshToken);
 
-        String storedRefreshToken = stringRedisTemplate.opsForValue().get(RedisKeyConstants.REFRESH_TOKEN_PREFIX + requestRefreshToken);
-        if (storedRefreshToken == null) {
-            throw new CustomException(ErrorCode.TOKEN_NOT_EXIST);
-        }
+        String newAccessToken = jwtUtil.generateAccessToken(email);
+        String newRefreshToken = jwtUtil.generateRefreshToken(email);
+        authService.invalidateRefreshToken(requestRefreshToken);
+        authService.storeRefreshToken(newRefreshToken, email);
 
-        if (Objects.equals(storedRefreshToken, email)) {
-            jwtUtil.verifyToken(requestRefreshToken);
+        TokenPairDto tokenPairDto = TokenPairDto.builder().accessToken(newAccessToken)
+            .refreshToken(newRefreshToken).build();
 
-            String newAccessToken = jwtUtil.generateAccessToken(email);
-            String newRefreshToken = jwtUtil.generateRefreshToken(email);
-            authService.invalidateRefreshToken(requestRefreshToken);
-            authService.storeRefreshToken(newRefreshToken, email);
-
-            TokenPairDto tokenPairDto = TokenPairDto.builder().accessToken(newAccessToken)
-                .refreshToken(newRefreshToken).build();
-
-            return ResponseDto.<TokenPairDto>builder().code(HttpServletResponse.SC_OK)
+        return ResponseDto.<TokenPairDto>builder().code(HttpServletResponse.SC_OK)
                 .message(Message.COMPLETE_ISSUE_TOKEN).data(tokenPairDto).build();
-        } else {
-            throw new CustomException(ErrorCode.INVALID_TOKEN);
-        }
     }
 
     /**
@@ -124,6 +109,8 @@ public class AuthApplication {
      * @param token
      */
     public void executeJwtAuthentication(String token) {
+        String userEmail = jwtUtil.getEmailFromToken(token);
+        authService.verifyNotDisabledAccessToken(token, userEmail);
         jwtUtil.verifyToken(token);
 
         Authentication authentication = authService.getAuthenticationByToken(token);
