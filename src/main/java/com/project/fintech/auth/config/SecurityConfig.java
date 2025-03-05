@@ -1,14 +1,25 @@
 package com.project.fintech.auth.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.project.fintech.application.AuthApplication;
 import com.project.fintech.auth.jwt.JwtFilter;
-import com.project.fintech.auth.otp.OtpFilter;
+import com.project.fintech.auth.springsecurity.CustomAuthenticationEntryPoint;
+import com.project.fintech.auth.springsecurity.CustomAuthenticationFilter;
+import com.project.fintech.auth.springsecurity.CustomLogoutHandler;
+import com.project.fintech.exception.ExceptionHandlingFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.AuthenticationProvider;
+import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
@@ -17,25 +28,62 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @RequiredArgsConstructor
 public class SecurityConfig {
 
+    public static final String[] publicEndPoints = {"/auth/login", "/auth/jwt/issue", "/error",
+        "/auth/logout", "/", "/swagger-ui/**", "/v3/**", "/swagger-resources/**", "/api-docs/**"};
+    private final AuthApplication authApplication;
+    private final PasswordEncoder passwordEncoder;
+    private final UserDetailsService userDetailsService;
+    private final JwtFilter jwtFilter;
+    private final ObjectMapper objectMapper;
+    private final CustomAuthenticationEntryPoint customAuthenticationEntryPoint;
+    private final ExceptionHandlingFilter exceptionHandlingFilter;
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtFilter jwtFilter, OtpFilter otpFilter) throws Exception {
-        http
-            .csrf(AbstractHttpConfigurer::disable)
-            .sessionManagement(session -> session.sessionCreationPolicy(
-                SessionCreationPolicy.STATELESS))
-            .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/login").permitAll() // todo 개발단계에는 임시로 permitAll()로 지정 추후 권한에 따른 url 접근 제한 필요 // 로그인과 OTP 요청은 허용
-                .anyRequest().permitAll() // 나머지는 인증 필요
-            )
-            .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class) // JWT 필터 추가
-            .addFilterBefore(otpFilter, JwtFilter.class); // OTP 필터는 JWT 필터 뒤에 실행
+    public SecurityFilterChain securityFilterChain(HttpSecurity http,
+        AuthenticationManager authenticationManager) throws Exception {
+        CustomAuthenticationFilter customAuthenticationFilter = new CustomAuthenticationFilter(
+            authApplication, objectMapper);
+        CustomLogoutHandler customLogoutHandler = new CustomLogoutHandler(authApplication,
+            objectMapper);
+//        OtpFilter otpFilter = new OtpFilter();
+
+        http.authenticationProvider(daoAuthenticationProvider(userDetailsService, passwordEncoder))
+            .anonymous(AbstractHttpConfigurer::disable);
+
+        customAuthenticationFilter.setAuthenticationManager(authenticationManager);
+        customAuthenticationFilter.setFilterProcessesUrl("/auth/login");
+
+        http.csrf(AbstractHttpConfigurer::disable).sessionManagement(
+                session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .authorizeHttpRequests(
+                auth ->
+                    auth.requestMatchers(publicEndPoints).permitAll()
+                        .requestMatchers(HttpMethod.POST, "/users").permitAll().anyRequest().authenticated())
+            .formLogin(AbstractHttpConfigurer::disable)
+            .addFilterBefore(exceptionHandlingFilter, CustomAuthenticationFilter.class )
+            .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
+            .addFilterAt(customAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+            .logout(logout ->
+                logout.logoutUrl("/auth/logout").addLogoutHandler(customLogoutHandler)
+                    .logoutSuccessHandler((request, response, authentication) -> {
+                        response.setStatus(HttpStatus.OK.value());
+                    }));
+        http.exceptionHandling(exHandling -> exHandling.authenticationEntryPoint(customAuthenticationEntryPoint));
 
         return http.build();
     }
 
+    @Bean
+    public AuthenticationProvider daoAuthenticationProvider(UserDetailsService userDetailsService,
+        PasswordEncoder passwordEncoder) {
+        DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
+        provider.setUserDetailsService(userDetailsService);
+        provider.setPasswordEncoder(passwordEncoder);
+        return provider;
+    }
 
     @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration configuration)
+        throws Exception {
+        return configuration.getAuthenticationManager();
     }
 }

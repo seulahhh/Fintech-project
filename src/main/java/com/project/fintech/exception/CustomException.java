@@ -1,12 +1,13 @@
 package com.project.fintech.exception;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
+import org.springframework.http.HttpStatus;
 
 @Getter
-public class CustomException extends RuntimeException{
+public class CustomException extends RuntimeException {
+
     private final ErrorCode errorCode;
 
     public CustomException(ErrorCode errorCode) {
@@ -14,14 +15,17 @@ public class CustomException extends RuntimeException{
         this.errorCode = errorCode;
     }
 
-    public CustomExceptionResponse toResponse() {
-        return new CustomExceptionResponse(this.errorCode);
+    public static CustomExceptionResponse toResponse(CustomException customException) {
+        return new CustomExceptionResponse(customException.errorCode.getCode(),
+            customException.errorCode.getDetail(), customException.errorCode.getHttpStatus());
     }
 
     @Getter // json 파싱을 위함
     @AllArgsConstructor
     @Builder
     public static class CustomExceptionResponse {
-        private ErrorCode errorCode;
+        private String code;
+        private String detail;
+        private HttpStatus httpStatus;
     }
 }

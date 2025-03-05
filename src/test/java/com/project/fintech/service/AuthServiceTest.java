@@ -4,10 +4,15 @@ import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatCode;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.project.fintech.auth.CustomUserDetailsService;
+import com.project.fintech.auth.jwt.JwtUtil;
 import com.project.fintech.auth.otp.OtpUtil;
 import com.project.fintech.builder.RegisterRequestDtoTestDataBuilder;
 import com.project.fintech.builder.UserTestDataBuilder;
@@ -18,7 +23,9 @@ import com.project.fintech.persistence.entity.OtpSecretKey;
 import com.project.fintech.persistence.entity.User;
 import com.project.fintech.persistence.repository.OtpSecretKeyRepository;
 import com.project.fintech.persistence.repository.UserRepository;
+import java.util.Date;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -26,11 +33,15 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.ValueOperations;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 
 @ExtendWith(MockitoExtension.class)
 class AuthServiceTest {
+
     @Mock
     UserRepository userRepository;
 
@@ -41,17 +52,32 @@ class AuthServiceTest {
     OtpUtil otpUtil;
 
     @Mock
+    JwtUtil jwtUtil;
+
+    @Mock
+    CustomUserDetailsService customUserDetailsService;
+
+    @Mock
+    StringRedisTemplate stringRedisTemplate;
+
+    @Mock
     PasswordEncoder passwordEncoder;
+
+    @Mock
+    ValueOperations<String, String> valueOperations;
 
     @InjectMocks
     AuthService authService;
 
+    public static final String DISABLED_TOKEN_PREFIX = "JWT_BLACKLIST::";
+    public static final String REFRESH_TOKEN_PREFIX = "JWT_REFRESH_TOKEN::";
+    
     @Test
     @DisplayName("이메일 중복 여부 체크 - 성공")
     void isNotDuplicateEmail_Success() {
         //given
         String email = "test@test.com";
-        when(userRepository.findByEmail(email)).thenReturn(Optional.empty());
+        when(userRepository.existsByEmail(email)).thenReturn(false);
 
         //when & then
         assertThatCode(() -> authService.isNotDuplicateEmail(email)).doesNotThrowAnyException();
@@ -63,7 +89,7 @@ class AuthServiceTest {
         //given
         User user = new UserTestDataBuilder().build();
         String email = user.getEmail();
-        when(userRepository.findByEmail(email)).thenReturn(Optional.of(user));
+        when(userRepository.existsByEmail(email)).thenReturn(true);
 
         //when & then
         assertThatThrownBy(() -> authService.isNotDuplicateEmail(email)).isInstanceOf(
@@ -79,7 +105,7 @@ class AuthServiceTest {
             email).build();
         String encodedPassword = "encodedPassword";
         when(passwordEncoder.encode(registerRequestDto.getPassword())).thenReturn(encodedPassword);
-        when(userRepository.findByEmail(email)).thenReturn(Optional.empty());
+        when(userRepository.existsByEmail(email)).thenReturn(false);
         when(userRepository.save(any(User.class))).thenAnswer(
             invocation -> invocation.getArgument(0));
 
@@ -105,7 +131,7 @@ class AuthServiceTest {
         String email = user.getEmail();
         RegisterRequestDto registerRequestDto = new RegisterRequestDtoTestDataBuilder().withEmail(
             email).build();
-        when(userRepository.findByEmail(email)).thenReturn(Optional.of(user));
+        when(userRepository.existsByEmail(email)).thenReturn(true);
 
         //when&then
         assertThatThrownBy(
@@ -151,12 +177,10 @@ class AuthServiceTest {
         ArgumentCaptor<OtpSecretKey> captor = ArgumentCaptor.forClass(OtpSecretKey.class);
         User user = new UserTestDataBuilder().withEmail(email).build();
         when(userRepository.findByEmail(email)).thenReturn(Optional.of(user));
-
         //when
         authService.saveOtpSecretKey(secretKey, email);
         verify(otpSecretKeyRepository, times(1)).save(captor.capture()); // capture를 진행
         OtpSecretKey value = captor.getValue();
-
         //then
         assertThat(value.getSecretKey()).isEqualTo(secretKey);
     }
@@ -281,13 +305,126 @@ class AuthServiceTest {
         User user = new UserTestDataBuilder().build();
         OtpSecretKey otpSecretKey = user.getOtpSecretKey();
         String email = user.getEmail();
-
         when(userRepository.findByEmail(email)).thenReturn(Optional.of(user));
         when(otpSecretKeyRepository.findByUser(user)).thenReturn(Optional.of(otpSecretKey));
         when(otpUtil.isCodeValid(otpSecretKey.getSecretKey(), code)).thenReturn(false);
 
-        // when & then
+        //when & then
         assertThatThrownBy(() -> authService.validateOtpCode(code, email)).isInstanceOf(
-            CustomException.class).extracting("errorCode").isEqualTo(ErrorCode.NOT_VALID_OTP_CODE);
+            CustomException.class).extracting("errorCode").isEqualTo(ErrorCode.INVALID_OTP_CODE);
+    }
+
+    @Test
+    @DisplayName("인증된 Token 정보로 객체 생성 - 성공")
+    void getAuthenticationByToken_Success() {
+        //given
+        String token = "1234ABC";
+        String email = "testmail@test.com";
+        User user = new UserTestDataBuilder().withEmail(email).build();
+        when(jwtUtil.getEmailFromToken(token)).thenReturn(email);
+        when(customUserDetailsService.loadUserByUsername(email)).thenReturn(user);
+
+        //when
+        Authentication authenticationFromToken = authService.getAuthenticationByToken(token);
+
+        //then
+        assertThat(authenticationFromToken.getName()).isEqualTo(email);
+    }
+
+    @Test
+    @DisplayName("인증된 Token 정보로 객체 생성 - 실패 - email과 일치하는 사용자가 없을 때")
+    void getAuthenticationByToken_Fail_WhenNotFoundUser() {
+        //given
+        String token = "1234ABC";
+        String email = "testmail@test.com";
+        when(jwtUtil.getEmailFromToken(token)).thenReturn(email);
+        when(customUserDetailsService.loadUserByUsername(email)).thenThrow(
+            new CustomException(ErrorCode.NOT_FOUND_USER));
+
+        // when & then
+        assertThatThrownBy(() -> authService.getAuthenticationByToken(token)).isInstanceOf(
+            CustomException.class).extracting("errorCode").isEqualTo(ErrorCode.NOT_FOUND_USER);
+    }
+
+    @Test
+    @DisplayName("Redis에서 Refresh Token 삭제 - 성공")
+    void invalidateRefreshToken_Success() {
+        //given
+        String refreshToken = "1234ABC";
+        when(stringRedisTemplate.hasKey(
+            REFRESH_TOKEN_PREFIX + refreshToken)).thenReturn(true);
+
+        //when
+        authService.invalidateRefreshToken(refreshToken);
+
+        //then
+        verify(stringRedisTemplate, times(1)).delete(
+            REFRESH_TOKEN_PREFIX + refreshToken);
+    }
+
+    @Test
+    @DisplayName("Redis에서 Refresh Token 삭제 실패 - Redis에 저장된 해당 Refresh token이 존재하지 않을 때")
+    void invalidateRefreshToken_Fail_WhenNotFoundToken() {
+        //given
+        String refreshToken = "1234ABC";
+        when(stringRedisTemplate.hasKey(
+            REFRESH_TOKEN_PREFIX + refreshToken)).thenReturn(false);
+        // when & then
+        assertThatThrownBy(() -> authService.invalidateRefreshToken(refreshToken)).isInstanceOf(
+            CustomException.class).extracting("errorCode").isEqualTo(ErrorCode.TOKEN_NOT_EXIST);
+    }
+
+    @Test
+    @DisplayName("Redis에 Refresh Token 저장 - 성공")
+    void storeRefreshToken_Success() {
+        //given
+        String token = "1234ABC";
+        String email = "testmail@test.com";
+        when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);
+        //when
+        authService.storeRefreshToken(token, email);
+        //then
+        verify(valueOperations, times(1)).set(eq(REFRESH_TOKEN_PREFIX + token),
+            eq(email), eq(7L),
+            eq(TimeUnit.DAYS));
+    }
+
+    @Test
+    @DisplayName("Redis에 Access Token을 Black list에 저장 - 성공")
+    void addAccessTokenBlackList_Success() {
+        //given
+        String token = "1234ABC";
+        String email = "testmail@test.com";
+        Date expiration = new Date(System.currentTimeMillis() + 1000 * 60 * 15);
+        when(jwtUtil.getTokenExpiration(token)).thenReturn(expiration);
+        when(jwtUtil.getEmailFromToken(token)).thenReturn(email);
+        when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);
+
+        //when
+        authService.addAccessTokenBlackList(token);
+
+        //then
+        verify(valueOperations, times(1)).set(eq(DISABLED_TOKEN_PREFIX + token),
+            eq(email),
+            anyLong(), eq(TimeUnit.SECONDS));
+    }
+
+    @Test
+    @DisplayName("Redis에 Access Token을 Black list에 저장 - 실패 - 토큰이 만료되어서 저장할 필요가 없을 때")
+    void addAccessTokenBlackList_Fail_WhenTokenAlreadyExpired() {
+        String token = "1234ABC";
+        String email = "testmail@test.com";
+        Date expiration = new Date(System.currentTimeMillis() - 1000 * 60 * 15);
+        //given
+        when(jwtUtil.getTokenExpiration(token)).thenReturn(expiration);
+        when(jwtUtil.getEmailFromToken(token)).thenReturn(email);
+
+        //when
+        authService.addAccessTokenBlackList(token);
+
+        //then
+        verify(valueOperations, never()).set(eq(DISABLED_TOKEN_PREFIX + email),
+            eq(token),
+            anyLong(), eq(TimeUnit.SECONDS));
     }
 }

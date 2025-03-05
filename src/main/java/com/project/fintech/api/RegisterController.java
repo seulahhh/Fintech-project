@@ -1,9 +1,9 @@
 package com.project.fintech.api;
 
 import com.project.fintech.application.RegisterApplication;
-import com.project.fintech.auth.otp.OtpVerificationDto;
+import com.project.fintech.model.dto.OtpVerificationDto;
 import com.project.fintech.model.dto.RegisterRequestDto;
-import com.project.fintech.model.dto.EmailVerificationDto;
+import com.project.fintech.model.dto.UserEmailDto;
 import com.project.fintech.model.type.Message;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -40,10 +40,10 @@ public class RegisterController {
      * @return OTP 등록 가능한 provisioning uri
      */
     @PostMapping("/auth/email/verify")
-    public ResponseEntity<String> verifyEmail(@Valid @RequestBody EmailVerificationDto EmailVerificationDto) {
+    public ResponseEntity<String> verifyEmail(@Valid @RequestBody UserEmailDto UserEmailDto) {
 
         return ResponseEntity.ok(registerApplication.completeEmailVerificationAndProvideOtpUrl(
-            EmailVerificationDto));
+            UserEmailDto));
     }
 
     /**

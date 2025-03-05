@@ -1,14 +1,24 @@
 server:
   port: 8080
+  servlet:
+    encoding:
+      force-response: true
 spring:
   application:
     name: fintech
-
+# mysql
   datasource:
     url: jdbc:mysql://localhost:3306/fintech?characterEncoding=UTF-8&serverTimezone=Asia/Seoul
     driver-class-name: com.mysql.cj.jdbc.Driver
     username: fintech
     password: 1
+
+# redis
+  data:
+    redis:
+      port: 6379
+      host: localhost # todo AWS 배포시 host 수정
+      password: ""
 # flyway
   flyway:
     enabled: true
