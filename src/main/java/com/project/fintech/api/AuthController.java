@@ -26,6 +26,15 @@ public class AuthController {
 //    } --> OTP 인증 및 재발급과 관련된 컨트롤러는 로그인, 로그아웃과 관련이 없어
 //    잠시 주석 처리 해두었습니다. 해당 부분 구현 후 해제하겠습니다
 
+    /**
+     * OTP secret key를 재발급하고 Provision URL 반환
+     * @param userEmailDto
+     * @return
+     */
+    @PostMapping("/auth/otp/reset")
+    public ResponseEntity<ResponseDto<String>> resetSecretKey(@RequestBody UserEmailDto userEmailDto) {
+        return ResponseEntity.ok(authApplication.issueNewOtpSecretAndSendUrl(userEmailDto));
+    }
     @PostMapping("/auth/jwt/issue")
     public ResponseEntity<ResponseDto<TokenPairDto>> issueTokens(
         @RequestBody IssueTokenRequestDto issueTokenRequestDto) {
