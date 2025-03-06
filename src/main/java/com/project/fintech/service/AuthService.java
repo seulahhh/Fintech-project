@@ -91,15 +91,15 @@ public class AuthService {
     }
 
     /**
-     * OTP 등록 여부를 전환 (isRegistredOtp = true)
+     * OTP 등록 여부를 전환 (isRegistredOtp -> true/false)
      *
      * @param email
      */
     @Transactional
-    public void markOtpAsRegistered(String email) {
+    public void markOtpAsRegistered(String email, Boolean bool) {
         User user = userRepository.findByEmail(email)
             .orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND_USER));
-        user.setOtpRegistered(true);
+        user.setOtpRegistered(bool);
     }
 
     /**

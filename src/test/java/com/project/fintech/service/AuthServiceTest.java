@@ -208,7 +208,7 @@ class AuthServiceTest {
 
         //when
         when(userRepository.findByEmail(email)).thenReturn(Optional.of(user));
-        authService.markOtpAsRegistered(email);
+        authService.markOtpAsRegistered(email, true);
 
         //then
         assertThat(user.getIsOtpRegistered()).isEqualTo(true);
@@ -225,7 +225,7 @@ class AuthServiceTest {
         when(userRepository.findByEmail(email)).thenReturn(Optional.empty());
 
         //then
-        assertThatThrownBy(() -> authService.markOtpAsRegistered(email)).isInstanceOf(
+        assertThatThrownBy(() -> authService.markOtpAsRegistered(email, true)).isInstanceOf(
             CustomException.class).extracting("errorCode").isEqualTo(ErrorCode.NOT_FOUND_USER);
     }
 
