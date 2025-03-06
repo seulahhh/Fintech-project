@@ -23,8 +23,6 @@ public class JwtFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
         FilterChain filterChain) throws ServletException, IOException {
 
-        String requestURI = request.getRequestURI();
-        String method = request.getMethod();
         if (request.getHeader("Authorization") == null) {
             filterChain.doFilter(request, response);
             return;
