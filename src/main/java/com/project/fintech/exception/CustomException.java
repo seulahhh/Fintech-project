@@ -17,7 +17,7 @@ public class CustomException extends RuntimeException {
 
     public static CustomExceptionResponse toResponse(CustomException customException) {
         return new CustomExceptionResponse(customException.errorCode.getCode(),
-            customException.errorCode.getDetail(), customException.errorCode.getHttpStatus());
+            customException.errorCode.getDetail());
     }
 
     @Getter // json 파싱을 위함
@@ -26,6 +26,5 @@ public class CustomException extends RuntimeException {
     public static class CustomExceptionResponse {
         private String code;
         private String detail;
-        private HttpStatus httpStatus;
     }
 }
