@@ -1,5 +1,6 @@
 package com.project.fintech.api;
 
+import com.project.fintech.application.AuthApplication;
 import com.project.fintech.application.RegisterApplication;
 import com.project.fintech.model.dto.OtpVerificationDto;
 import com.project.fintech.model.dto.RegisterRequestDto;
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class RegisterController {
 
     private final RegisterApplication registerApplication;
+    private final AuthApplication authApplication;
 
     /**
      * 회원가입 요청을 받으면 인증 메일 발송하기
@@ -54,7 +56,7 @@ public class RegisterController {
      */
     @PostMapping("/auth/otp/register")
     public ResponseEntity<Message> registerOtp(@Valid @RequestBody OtpVerificationDto otpVerificationDto) {
-        registerApplication.completeOtpRegistration(otpVerificationDto);
+        authApplication.completeOtpRegistration(otpVerificationDto);
 
         return ResponseEntity.ok(Message.COMPLETE_REGISTERED_OTP);
     }

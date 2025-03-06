@@ -27,6 +27,20 @@ public class AuthApplication {
     private final JwtUtil jwtUtil;
 
     /**
+     * OTP인증이 필요한 서비스에서 OTP검증 수행 흐름
+     *
+     * @param otpVerificationDto
+     */
+    public ResponseDto<String> executeOtpVerification(OtpVerificationDto otpVerificationDto) {
+        String email = otpVerificationDto.getEmail();
+        int code = Integer.parseInt(otpVerificationDto.getOtpCode());
+        authService.verifyOtpCode(code, email);
+
+        return ResponseDto.<String>builder().data(null).message(Message.COMPLETE_VERIFY_OTP)
+            .code(HttpServletResponse.SC_OK).build();
+    }
+
+    /**
      * OTP 재발급 시작하는 흐름
      *
      * @param email
@@ -39,15 +53,17 @@ public class AuthApplication {
     }
 
     /**
-     * OTP 재발급 완료하는 흐름
-     *
+     * 발급한 secretKey로 OTP 인증을 마치면 OTP 등록여부를 완료처리한다.
      * @param otpVerificationDto
      */
-    public void completeOtpReissue(OtpVerificationDto otpVerificationDto) {
+    @Transactional
+    public ResponseDto<String> completeOtpRegistration(OtpVerificationDto otpVerificationDto) {
         String email = otpVerificationDto.getEmail();
-        int code = Integer.parseInt(otpVerificationDto.getOtpCode());
-        authService.validateOtpCode(code, email);
-        authService.markOtpAsRegistered(email);
+        int otpCode = Integer.parseInt(otpVerificationDto.getOtpCode());
+        authService.validateOtpCode(otpCode, email);
+        authService.markOtpAsRegistered(email, true);
+        return ResponseDto.<String>builder().data(null).message(Message.COMPLETE_REGISTERED_OTP)
+            .code(HttpServletResponse.SC_OK).build();
     }
 
     /**
