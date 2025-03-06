@@ -93,7 +93,7 @@ class AuthServiceTest {
 
         //when & then
         assertThatThrownBy(() -> authService.isNotDuplicateEmail(email)).isInstanceOf(
-            CustomException.class).extracting("errorCode").isEqualTo(ErrorCode.ALREADY_EXIST_EMAIL);
+            CustomException.class).extracting("errorCode").isEqualTo(ErrorCode.EMAIL_ALREADY_EXIST);
     }
 
     @Test
@@ -136,7 +136,7 @@ class AuthServiceTest {
         //when&then
         assertThatThrownBy(
             () -> authService.registerTemporaryUser(registerRequestDto)).isInstanceOf(
-            CustomException.class).extracting("errorCode").isEqualTo(ErrorCode.ALREADY_EXIST_EMAIL);
+            CustomException.class).extracting("errorCode").isEqualTo(ErrorCode.EMAIL_ALREADY_EXIST);
     }
 
     @Test
@@ -163,7 +163,7 @@ class AuthServiceTest {
 
         //when & then
         assertThatThrownBy(() -> authService.markEmailAsVerified(email)).isInstanceOf(
-            CustomException.class).extracting("errorCode").isEqualTo(ErrorCode.NOT_FOUND_USER);
+            CustomException.class).extracting("errorCode").isEqualTo(ErrorCode.USER_NOT_FOUND);
 
         verify(userRepository, times(1)).findByEmail(email);
     }
@@ -195,7 +195,7 @@ class AuthServiceTest {
 
         //when & then
         assertThatThrownBy(() -> authService.saveOtpSecretKey(secretKey, email)).isInstanceOf(
-            CustomException.class).extracting("errorCode").isEqualTo(ErrorCode.NOT_FOUND_USER);
+            CustomException.class).extracting("errorCode").isEqualTo(ErrorCode.USER_NOT_FOUND);
         verify(userRepository, times(1)).findByEmail(email);
     }
 
@@ -226,7 +226,7 @@ class AuthServiceTest {
 
         //then
         assertThatThrownBy(() -> authService.markOtpAsRegistered(email, true)).isInstanceOf(
-            CustomException.class).extracting("errorCode").isEqualTo(ErrorCode.NOT_FOUND_USER);
+            CustomException.class).extracting("errorCode").isEqualTo(ErrorCode.USER_NOT_FOUND);
     }
 
     @Test
@@ -259,7 +259,7 @@ class AuthServiceTest {
 
         //then
         assertThatThrownBy(() -> authService.getUserSecretKey(email)).isInstanceOf(
-            CustomException.class).extracting("errorCode").isEqualTo(ErrorCode.NOT_FOUND_USER);
+            CustomException.class).extracting("errorCode").isEqualTo(ErrorCode.USER_NOT_FOUND);
         verify(userRepository, times(1)).findByEmail(email);
 
     }
@@ -282,7 +282,7 @@ class AuthServiceTest {
 
     @Test
     @DisplayName("사용자가 입력한 OTP 코드 검증 - 성공")
-    void validateOtpCode_Success() {
+    void verifyOtpCode_Success() {
         //given
         int code = 301304;
         User user = new UserTestDataBuilder().build();
@@ -294,12 +294,12 @@ class AuthServiceTest {
         when(otpUtil.isCodeValid(otpSecretKey.getSecretKey(), code)).thenReturn(true);
 
         //when & then
-        assertThatCode(() -> authService.validateOtpCode(code, email)).doesNotThrowAnyException();
+        assertThatCode(() -> authService.verifyOtpCode(code, email)).doesNotThrowAnyException();
     }
 
     @Test
     @DisplayName("사용자가 입력한 OTP 코드 검증 - 실패(OTP 코드 검증에 실패했을 때)")
-    void validateOtpCode_Fail_WhenNotValidCode() {
+    void verifyOtpCode_Fail_WhenNotValidCode() {
         //given
         int code = 301304;
         User user = new UserTestDataBuilder().build();
@@ -310,7 +310,7 @@ class AuthServiceTest {
         when(otpUtil.isCodeValid(otpSecretKey.getSecretKey(), code)).thenReturn(false);
 
         //when & then
-        assertThatThrownBy(() -> authService.validateOtpCode(code, email)).isInstanceOf(
+        assertThatThrownBy(() -> authService.verifyOtpCode(code, email)).isInstanceOf(
             CustomException.class).extracting("errorCode").isEqualTo(ErrorCode.INVALID_OTP_CODE);
     }
 
@@ -339,11 +339,11 @@ class AuthServiceTest {
         String email = "testmail@test.com";
         when(jwtUtil.getEmailFromToken(token)).thenReturn(email);
         when(customUserDetailsService.loadUserByUsername(email)).thenThrow(
-            new CustomException(ErrorCode.NOT_FOUND_USER));
+            new CustomException(ErrorCode.USER_NOT_FOUND));
 
         // when & then
         assertThatThrownBy(() -> authService.getAuthenticationByToken(token)).isInstanceOf(
-            CustomException.class).extracting("errorCode").isEqualTo(ErrorCode.NOT_FOUND_USER);
+            CustomException.class).extracting("errorCode").isEqualTo(ErrorCode.USER_NOT_FOUND);
     }
 
     @Test
@@ -371,7 +371,7 @@ class AuthServiceTest {
             REFRESH_TOKEN_PREFIX + refreshToken)).thenReturn(false);
         // when & then
         assertThatThrownBy(() -> authService.invalidateRefreshToken(refreshToken)).isInstanceOf(
-            CustomException.class).extracting("errorCode").isEqualTo(ErrorCode.TOKEN_NOT_EXIST);
+            CustomException.class).extracting("errorCode").isEqualTo(ErrorCode.TOKEN_NOT_FOUND);
     }
 
     @Test

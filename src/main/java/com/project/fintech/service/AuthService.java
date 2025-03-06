@@ -10,6 +10,7 @@ import com.project.fintech.persistence.entity.OtpSecretKey;
 import com.project.fintech.persistence.entity.User;
 import com.project.fintech.persistence.repository.OtpSecretKeyRepository;
 import com.project.fintech.persistence.repository.UserRepository;
+import jakarta.servlet.http.HttpSession;
 import java.util.Date;
 import java.util.concurrent.TimeUnit;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +26,8 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class AuthService {
 
+    public static final String DISABLED_TOKEN_PREFIX = "JWT_BLACKLIST::";
+    public static final String REFRESH_TOKEN_PREFIX = "JWT_REFRESH_TOKEN::";
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final OtpUtil otpUtil;
@@ -32,9 +35,6 @@ public class AuthService {
     private final OtpSecretKeyRepository otpSecretKeyRepository;
     private final CustomUserDetailsService customUserDetailsService;
     private final StringRedisTemplate stringRedisTemplate;
-
-    public static final String DISABLED_TOKEN_PREFIX = "JWT_BLACKLIST::";
-    public static final String REFRESH_TOKEN_PREFIX = "JWT_REFRESH_TOKEN::";
 
     /**
      * 이메일 중복 여부 체크
@@ -44,7 +44,7 @@ public class AuthService {
      */
     public void isNotDuplicateEmail(String email) {
         if (userRepository.existsByEmail(email)) {
-            throw new CustomException(ErrorCode.ALREADY_EXIST_EMAIL);
+            throw new CustomException(ErrorCode.EMAIL_ALREADY_EXIST);
         }
     }
 
@@ -72,7 +72,7 @@ public class AuthService {
     @Transactional
     public void markEmailAsVerified(String email) {
         User user = userRepository.findByEmail(email)
-            .orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND_USER));
+            .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
         user.setVerifiedEmail(true);
     }
 
@@ -85,9 +85,23 @@ public class AuthService {
     @Transactional
     public void saveOtpSecretKey(String secretKey, String email) {
         User user = userRepository.findByEmail(email)
-            .orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND_USER));
+            .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
         OtpSecretKey otpSecretKey = OtpSecretKey.builder().secretKey(secretKey).user(user).build();
         otpSecretKeyRepository.save(otpSecretKey);
+    }
+
+    /**
+     * DB에 저장된 사용자의 OTP secret key 삭제 (OTP 재등록 시, disabled 시)
+     *
+     * @param email userEmail
+     */
+    @Transactional
+    public void invalidateOtpSecretKey(String email) {
+        User user = userRepository.findByEmail(email)
+            .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+        OtpSecretKey otpSecretKey = otpSecretKeyRepository.findByUser(user)
+            .orElseThrow(() -> new CustomException(ErrorCode.OTP_SECRET_KEY_NOT_FOUND));
+        otpSecretKeyRepository.delete(otpSecretKey);
     }
 
     /**
@@ -98,7 +112,7 @@ public class AuthService {
     @Transactional
     public void markOtpAsRegistered(String email, Boolean bool) {
         User user = userRepository.findByEmail(email)
-            .orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND_USER));
+            .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
         user.setOtpRegistered(bool);
     }
 
@@ -111,9 +125,9 @@ public class AuthService {
     @Transactional
     public String getUserSecretKey(String email) {
         User user = userRepository.findByEmail(email)
-            .orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND_USER));
+            .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
         OtpSecretKey otpSecretKey = otpSecretKeyRepository.findByUser(user)
-            .orElseThrow(() -> new CustomException(ErrorCode.OTP_NOT_REGISTERED));
+            .orElseThrow(() -> new CustomException(ErrorCode.OTP_SECRET_KEY_NOT_FOUND));
         return otpSecretKey.getSecretKey();
     }
 
@@ -124,7 +138,7 @@ public class AuthService {
      * @param email
      */
     @Transactional
-    public void validateOtpCode(int code, String email) {
+    public void verifyOtpCode(int code, String email) {
         String userSecretKey = getUserSecretKey(email);
         boolean codeValid = otpUtil.isCodeValid(userSecretKey, code);
         if (!codeValid) {
@@ -152,7 +166,7 @@ public class AuthService {
      */
     public void invalidateRefreshToken(String refreshToken) {
         if (!stringRedisTemplate.hasKey(REFRESH_TOKEN_PREFIX + refreshToken)) {
-            throw new CustomException(ErrorCode.TOKEN_NOT_EXIST);
+            throw new CustomException(ErrorCode.TOKEN_NOT_FOUND);
         }
         stringRedisTemplate.delete(REFRESH_TOKEN_PREFIX + refreshToken);
     }
@@ -196,7 +210,7 @@ public class AuthService {
         String userEmail = stringRedisTemplate.opsForValue()
             .get(REFRESH_TOKEN_PREFIX + token);
         if (userEmail == null) {
-            throw new CustomException(ErrorCode.TOKEN_NOT_EXIST);
+            throw new CustomException(ErrorCode.TOKEN_NOT_FOUND);
         } else if (!userEmail.equals(email)) {
             throw new CustomException(ErrorCode.REFRESH_TOKEN_USER_MISMATCH);
         }
