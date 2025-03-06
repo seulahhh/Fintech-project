@@ -84,6 +84,7 @@ public class AuthApplication {
      * @param email
      * @return access token
      */
+    @Transactional
     public TokenPairDto issueTokenPair(String email) {
         String accessToken = jwtUtil.generateAccessToken(email);
         String refreshToken = jwtUtil.generateRefreshToken(email);
@@ -99,6 +100,7 @@ public class AuthApplication {
      * @param issueTokenRequestDto refresh token, email
      * @return new access token
      */
+    @Transactional
     public ResponseDto<TokenPairDto> issueNewAccessTokenByRefreshToken(
         IssueTokenRequestDto issueTokenRequestDto) {
         String requestRefreshToken = issueTokenRequestDto.getRefreshToken();
@@ -124,6 +126,7 @@ public class AuthApplication {
      *
      * @param token
      */
+    @Transactional
     public void executeJwtAuthentication(String token) {
         String userEmail = jwtUtil.getEmailFromToken(token);
         authService.verifyNotDisabledAccessToken(token, userEmail);
@@ -139,6 +142,7 @@ public class AuthApplication {
      *
      * @param
      */
+    @Transactional
     public void processTokenWhenLogout(LogoutRequestDto logoutRequestDto) {
         authService.invalidateRefreshToken(logoutRequestDto.getRefreshToken());
         authService.addAccessTokenBlackList(logoutRequestDto.getAccessToken());
