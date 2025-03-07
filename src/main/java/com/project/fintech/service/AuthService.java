@@ -108,7 +108,7 @@ public class AuthService {
     }
 
     /**
-     * OTP 등록 여부를 전환 (isRegistredOtp -> true/false)
+     * OTP 등록 여부를 전환
      *
      * @param email
      */
@@ -232,8 +232,7 @@ public class AuthService {
         if (current.before(expiration)) {
             long diffInMillies = expiration.getTime() - current.getTime();
             stringRedisTemplate.opsForValue()
-                .set(DISABLED_TOKEN_PREFIX + token, email, diffInMillies,
-                    TimeUnit.SECONDS);
+                .set(DISABLED_TOKEN_PREFIX + token, email, diffInMillies, TimeUnit.SECONDS);
         }
     }
 
@@ -244,8 +243,7 @@ public class AuthService {
      * @param email user email
      */
     public void verifyRefreshTokenEmailPair(String token, String email) {
-        String userEmail = stringRedisTemplate.opsForValue()
-            .get(REFRESH_TOKEN_PREFIX + token);
+        String userEmail = stringRedisTemplate.opsForValue().get(REFRESH_TOKEN_PREFIX + token);
         if (userEmail == null) {
             throw new CustomException(ErrorCode.TOKEN_NOT_FOUND);
         } else if (!userEmail.equals(email)) {
@@ -260,10 +258,8 @@ public class AuthService {
      * @param email
      */
     public void verifyNotDisabledAccessToken(String token, String email) {
-        String userEmail = stringRedisTemplate.opsForValue()
-            .get(DISABLED_TOKEN_PREFIX + token);
-        if (stringRedisTemplate.hasKey(DISABLED_TOKEN_PREFIX + token)
-            && userEmail.equals(email)) {
+        String userEmail = stringRedisTemplate.opsForValue().get(DISABLED_TOKEN_PREFIX + token);
+        if (stringRedisTemplate.hasKey(DISABLED_TOKEN_PREFIX + token) && userEmail.equals(email)) {
             throw new CustomException(ErrorCode.INVALID_TOKEN);
         }
     }

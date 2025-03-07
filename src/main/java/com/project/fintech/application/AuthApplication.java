@@ -130,7 +130,7 @@ public class AuthApplication {
             .refreshToken(newRefreshToken).build();
 
         return ResponseDto.<TokenPairDto>builder().code(HttpServletResponse.SC_OK)
-                .message(Message.COMPLETE_ISSUE_TOKEN).data(tokenPairDto).build();
+            .message(Message.COMPLETE_ISSUE_TOKEN).data(tokenPairDto).build();
     }
 
     /**
@@ -151,7 +151,7 @@ public class AuthApplication {
     }
 
     /**
-     * 로그아웃시 Jwt token에 대한 처리를 하는 흐름
+     * 로그아웃시 Jwt token과 session에 대한 처리를 하는 흐름
      *
      * @param
      */
