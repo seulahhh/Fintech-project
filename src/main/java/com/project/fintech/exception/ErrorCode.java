@@ -19,6 +19,7 @@ public enum ErrorCode {
     REFRESH_TOKEN_USER_MISMATCH("Refresh Token의 사용자가 일치하지 않습니다.", "AUTH-010",
         HttpStatus.BAD_REQUEST),
     LOGIN_REQUEST_FAIL("인증에 실패하였습니다.", "AUTH-011", HttpStatus.BAD_REQUEST),
+    OTP_ATTEMPT_EXCEEDED("해당 OTP 코드에 대한 인증 횟수가 초과 되었습니다.", "AUTH-012", HttpStatus.BAD_REQUEST),
 
     IO_OPERATION_FAILED("입출력 작업 중 오류가 발생했습니다.", "IO-001", HttpStatus.BAD_REQUEST),
 
