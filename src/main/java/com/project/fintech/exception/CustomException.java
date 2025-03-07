@@ -3,7 +3,6 @@ package com.project.fintech.exception;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
-import org.springframework.http.HttpStatus;
 
 @Getter
 public class CustomException extends RuntimeException {

@@ -5,6 +5,7 @@ import static org.assertj.core.api.AssertionsForClassTypes.assertThatCode;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -42,36 +43,28 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 @ExtendWith(MockitoExtension.class)
 class AuthServiceTest {
 
+    public static final String DISABLED_TOKEN_PREFIX = "JWT_BLACKLIST::";
+    public static final String REFRESH_TOKEN_PREFIX = "JWT_REFRESH_TOKEN::";
+    public static final String OTP_COUNTING_PREFIX = "OTP_COUNTING::";
     @Mock
     UserRepository userRepository;
-
     @Mock
     OtpSecretKeyRepository otpSecretKeyRepository;
-
     @Mock
     OtpUtil otpUtil;
-
     @Mock
     JwtUtil jwtUtil;
-
     @Mock
     CustomUserDetailsService customUserDetailsService;
-
     @Mock
     StringRedisTemplate stringRedisTemplate;
-
     @Mock
     PasswordEncoder passwordEncoder;
-
     @Mock
     ValueOperations<String, String> valueOperations;
-
     @InjectMocks
     AuthService authService;
 
-    public static final String DISABLED_TOKEN_PREFIX = "JWT_BLACKLIST::";
-    public static final String REFRESH_TOKEN_PREFIX = "JWT_REFRESH_TOKEN::";
-    
     @Test
     @DisplayName("이메일 중복 여부 체크 - 성공")
     void isNotDuplicateEmail_Success() {
@@ -200,6 +193,36 @@ class AuthServiceTest {
     }
 
     @Test
+    @DisplayName("DB에 저장된 사용자의 OTP secret key 삭제 - 성공")
+    void invalidateOtpSecretKey_Success() {
+        //given
+        User user = new UserTestDataBuilder().build();
+        String email = user.getEmail();
+        when(userRepository.findByEmail(email)).thenReturn(Optional.of(user));
+
+        //when
+        authService.invalidateOtpSecretKey(email);
+
+        //then
+        assertThat(user.getOtpSecretKey()).isNull();
+        verify(userRepository, times(1)).save(user);
+    }
+
+    @Test
+    @DisplayName("DB에 저장된 사용자의 OTP secret key 삭제 - 실패(사용자를 찾지 못했을 때)")
+    void invalidateOtpSecretKey_Fail_WhenUserNotFound() {
+        //given
+        User user = new UserTestDataBuilder().build();
+        String email = user.getEmail();
+        when(userRepository.findByEmail(email)).thenReturn(Optional.empty());
+
+        //when & then
+        assertThatThrownBy(() -> authService.invalidateOtpSecretKey(email)).isInstanceOf(
+            CustomException.class).extracting("errorCode").isEqualTo(ErrorCode.USER_NOT_FOUND);
+        verify(userRepository, never()).save(user);
+    }
+
+    @Test
     @DisplayName("OTP 등록 여부 전환 - 성공")
     void markOtpAsRegistered_Success() {
         //given
@@ -276,7 +299,8 @@ class AuthServiceTest {
 
         //when & then
         assertThatThrownBy(() -> authService.getUserSecretKey(email)).isInstanceOf(
-            CustomException.class).extracting("errorCode").isEqualTo(ErrorCode.OTP_NOT_REGISTERED);
+                CustomException.class).extracting("errorCode")
+            .isEqualTo(ErrorCode.OTP_SECRET_KEY_NOT_FOUND);
         verify(otpSecretKeyRepository, times(1)).findByUser(user);
     }
 
@@ -292,6 +316,8 @@ class AuthServiceTest {
         when(userRepository.findByEmail(email)).thenReturn(Optional.of(user));
         when(otpSecretKeyRepository.findByUser(user)).thenReturn(Optional.of(otpSecretKey));
         when(otpUtil.isCodeValid(otpSecretKey.getSecretKey(), code)).thenReturn(true);
+        when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.get(OTP_COUNTING_PREFIX + email)).thenReturn("1");
 
         //when & then
         assertThatCode(() -> authService.verifyOtpCode(code, email)).doesNotThrowAnyException();
@@ -308,10 +334,59 @@ class AuthServiceTest {
         when(userRepository.findByEmail(email)).thenReturn(Optional.of(user));
         when(otpSecretKeyRepository.findByUser(user)).thenReturn(Optional.of(otpSecretKey));
         when(otpUtil.isCodeValid(otpSecretKey.getSecretKey(), code)).thenReturn(false);
+        when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.get(OTP_COUNTING_PREFIX + email)).thenReturn("1");
 
         //when & then
         assertThatThrownBy(() -> authService.verifyOtpCode(code, email)).isInstanceOf(
             CustomException.class).extracting("errorCode").isEqualTo(ErrorCode.INVALID_OTP_CODE);
+    }
+
+    @Test
+    @DisplayName("사용자가 입력한 OTP 코드 검증 - 실패(OTP 인증 시도 회수를 초과했을 때)")
+    void verifyOtpCode_Fail_WhenOtpAttemptExceeded() {
+        int code = 301304;
+        User user = new UserTestDataBuilder().build();
+        String email = user.getEmail();
+        when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.get(OTP_COUNTING_PREFIX + email)).thenReturn("3");
+
+        assertThatThrownBy(() -> authService.verifyOtpCode(code, email)).isInstanceOf(
+                CustomException.class).extracting("errorCode")
+            .isEqualTo(ErrorCode.OTP_ATTEMPT_EXCEEDED);
+    }
+
+    @Test
+    @DisplayName("OTP 인증 시도 횟수 카운팅 - 성공 - 처음 인증시도 실패 카운팅")
+    void countUpOtpAttempt_Success() {
+        //given
+        long secondsRemaining = 10;
+        String email = "test.com@gmail.com";
+
+        when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.increment(OTP_COUNTING_PREFIX + email)).thenReturn(1L);
+
+        //when
+        authService.countUpOtpAttempt(email);
+
+        //then
+        verify(stringRedisTemplate).expire(OTP_COUNTING_PREFIX + email, secondsRemaining,
+            TimeUnit.SECONDS);
+    }
+
+    @Test
+    @DisplayName("OTP 인증 시도 카운팅 - 성공 - 인증 시도 실패 2번째부터는 만료설정 없이 카운팅만 진행")
+    void countUpOtpAttempt_Success_NoExpireForSubsequentAttempts() {
+        //given
+        String email = "test.com@gmail.com";
+
+        when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.increment(OTP_COUNTING_PREFIX + email)).thenReturn(2L);
+        //when
+        authService.countUpOtpAttempt(email);
+
+        //then
+        verify(stringRedisTemplate, never()).expire(anyString(), anyLong(), any(TimeUnit.class));
     }
 
     @Test
@@ -351,15 +426,13 @@ class AuthServiceTest {
     void invalidateRefreshToken_Success() {
         //given
         String refreshToken = "1234ABC";
-        when(stringRedisTemplate.hasKey(
-            REFRESH_TOKEN_PREFIX + refreshToken)).thenReturn(true);
+        when(stringRedisTemplate.hasKey(REFRESH_TOKEN_PREFIX + refreshToken)).thenReturn(true);
 
         //when
         authService.invalidateRefreshToken(refreshToken);
 
         //then
-        verify(stringRedisTemplate, times(1)).delete(
-            REFRESH_TOKEN_PREFIX + refreshToken);
+        verify(stringRedisTemplate, times(1)).delete(REFRESH_TOKEN_PREFIX + refreshToken);
     }
 
     @Test
@@ -367,8 +440,7 @@ class AuthServiceTest {
     void invalidateRefreshToken_Fail_WhenNotFoundToken() {
         //given
         String refreshToken = "1234ABC";
-        when(stringRedisTemplate.hasKey(
-            REFRESH_TOKEN_PREFIX + refreshToken)).thenReturn(false);
+        when(stringRedisTemplate.hasKey(REFRESH_TOKEN_PREFIX + refreshToken)).thenReturn(false);
         // when & then
         assertThatThrownBy(() -> authService.invalidateRefreshToken(refreshToken)).isInstanceOf(
             CustomException.class).extracting("errorCode").isEqualTo(ErrorCode.TOKEN_NOT_FOUND);
@@ -384,8 +456,7 @@ class AuthServiceTest {
         //when
         authService.storeRefreshToken(token, email);
         //then
-        verify(valueOperations, times(1)).set(eq(REFRESH_TOKEN_PREFIX + token),
-            eq(email), eq(7L),
+        verify(valueOperations, times(1)).set(eq(REFRESH_TOKEN_PREFIX + token), eq(email), eq(7L),
             eq(TimeUnit.DAYS));
     }
 
@@ -404,8 +475,7 @@ class AuthServiceTest {
         authService.addAccessTokenBlackList(token);
 
         //then
-        verify(valueOperations, times(1)).set(eq(DISABLED_TOKEN_PREFIX + token),
-            eq(email),
+        verify(valueOperations, times(1)).set(eq(DISABLED_TOKEN_PREFIX + token), eq(email),
             anyLong(), eq(TimeUnit.SECONDS));
     }
 
@@ -423,8 +493,7 @@ class AuthServiceTest {
         authService.addAccessTokenBlackList(token);
 
         //then
-        verify(valueOperations, never()).set(eq(DISABLED_TOKEN_PREFIX + email),
-            eq(token),
+        verify(valueOperations, never()).set(eq(DISABLED_TOKEN_PREFIX + email), eq(token),
             anyLong(), eq(TimeUnit.SECONDS));
     }
 }
