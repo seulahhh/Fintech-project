@@ -50,7 +50,7 @@ public class RegisterApplication {
         authService.markEmailAsVerified(userEmail);
         GoogleAuthenticatorKey otpSecretKey = otpUtil.createOtpSecretKey();
         String provisioningUrl = otpUtil.createProvisioningUrl(userEmail, otpSecretKey);
-        authService.saveOtpSecretKey(provisioningUrl, userEmail);
+        authService.saveOtpSecretKey(otpSecretKey.getKey(), userEmail);
         return provisioningUrl;
     }
 }
