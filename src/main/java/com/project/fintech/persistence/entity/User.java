@@ -1,6 +1,7 @@
 package com.project.fintech.persistence.entity;
 
 import com.project.fintech.model.type.Role;
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -38,7 +39,7 @@ public class User extends BaseEntity implements UserDetails {
 
     private String phone;
 
-    @OneToOne (mappedBy = "user")
+    @OneToOne (mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private OtpSecretKey otpSecretKey;
 
     @OneToMany (mappedBy = "user")
@@ -74,5 +75,9 @@ public class User extends BaseEntity implements UserDetails {
 
     public void setOtpRegistered(Boolean otpRegistered) {
         isOtpRegistered = otpRegistered;
+    }
+
+    public void setOtpSecretKeyNull() {
+        this.otpSecretKey = null;
     }
 }

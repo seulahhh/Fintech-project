@@ -103,7 +103,8 @@ public class AuthService {
             .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
         OtpSecretKey otpSecretKey = otpSecretKeyRepository.findByUser(user)
             .orElseThrow(() -> new CustomException(ErrorCode.OTP_SECRET_KEY_NOT_FOUND));
-        otpSecretKeyRepository.delete(otpSecretKey);
+        user.setOtpSecretKeyNull();
+        userRepository.save(user);
     }
 
     /**
