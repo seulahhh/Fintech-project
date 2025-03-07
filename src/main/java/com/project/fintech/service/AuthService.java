@@ -139,11 +139,44 @@ public class AuthService {
      */
     @Transactional
     public void verifyOtpCode(int code, String email) {
+        String attemptedCount = stringRedisTemplate.opsForValue().get(OTP_COUNTING_PREFIX + email);
+        if (attemptedCount != null && Integer.parseInt(attemptedCount) >= 3) {
+            throw new CustomException(ErrorCode.OTP_ATTEMPT_EXCEEDED);
+        }
+
         String userSecretKey = getUserSecretKey(email);
         boolean codeValid = otpUtil.isCodeValid(userSecretKey, code);
         if (!codeValid) {
+            countOtpAttempt(email);
             throw new CustomException(ErrorCode.INVALID_OTP_CODE);
         }
+    }
+
+    /**
+     * OTP 인증 시도 횟수 session(redis)에 카운팅해서 저장
+     *
+     * @param email
+     */
+    public void countOtpAttempt(String email) {
+        long currentTimeInSeconds = System.currentTimeMillis() / 1000;
+        int period = 30;
+        long secondsPassed = currentTimeInSeconds % period;
+        long secondsRemaining = period - secondsPassed;
+
+        Long newCount = stringRedisTemplate.opsForValue().increment(OTP_COUNTING_PREFIX + email);
+        if (newCount == 1) {
+            stringRedisTemplate.expire(OTP_COUNTING_PREFIX + email, secondsRemaining,
+                TimeUnit.HOURS);
+        }
+    }
+
+    /**
+     * 인증 시도 실패 횟수 삭제
+     *
+     * @param email
+     */
+    public void deleteOtpAttempt(String email) {
+        stringRedisTemplate.delete(OTP_COUNTING_PREFIX + email);
     }
 
     /**
