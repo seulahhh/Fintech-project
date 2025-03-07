@@ -6,6 +6,7 @@ import com.project.fintech.model.dto.OtpVerificationDto;
 import com.project.fintech.model.dto.ResponseDto;
 import com.project.fintech.model.dto.TokenPairDto;
 import com.project.fintech.model.dto.UserEmailDto;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -24,7 +25,7 @@ public class AuthController {
      * @return
      */
     @PostMapping("/auth/otp/reset")
-    public ResponseEntity<ResponseDto<String>> resetSecretKey(@RequestBody UserEmailDto userEmailDto) {
+    public ResponseEntity<ResponseDto<String>> resetSecretKey(@Valid @RequestBody UserEmailDto userEmailDto) {
         return ResponseEntity.ok(authApplication.issueNewOtpSecretAndSendUrl(userEmailDto));
     }
 
@@ -35,7 +36,7 @@ public class AuthController {
      * @return
      */
     @PostMapping("/auth/jwt/issue")
-    public ResponseEntity<ResponseDto<TokenPairDto>> issueTokens(
+    public ResponseEntity<ResponseDto<TokenPairDto>> issueTokens(@Valid
         @RequestBody IssueTokenRequestDto issueTokenRequestDto) {
         return ResponseEntity.ok(
             authApplication.issueNewAccessTokenByRefreshToken(issueTokenRequestDto));
