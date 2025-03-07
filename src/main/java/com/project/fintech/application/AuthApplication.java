@@ -31,12 +31,14 @@ public class AuthApplication {
      *
      * @param otpVerificationDto
      */
-    public ResponseDto<String> executeOtpVerification(OtpVerificationDto otpVerificationDto) {
+    public ResponseDto<String> executeOtpVerification(OtpVerificationDto otpVerificationDto,
+        HttpSession session) {
         String email = otpVerificationDto.getEmail();
         int code = Integer.parseInt(otpVerificationDto.getOtpCode());
         authService.verifyOtpCode(code, email);
-
-        return ResponseDto.<String>builder().data(null).message(Message.COMPLETE_VERIFY_OTP)
+        authService.deleteOtpAttempt(email);
+        authService.storeOtpSession(session);
+        return ResponseDto.<String>builder().data("OTP 인증 OK").message(Message.COMPLETE_VERIFY_OTP)
             .code(HttpServletResponse.SC_OK).build();
     }
 

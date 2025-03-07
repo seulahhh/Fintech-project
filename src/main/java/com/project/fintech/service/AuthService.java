@@ -10,10 +10,10 @@ import com.project.fintech.persistence.entity.OtpSecretKey;
 import com.project.fintech.persistence.entity.User;
 import com.project.fintech.persistence.repository.OtpSecretKeyRepository;
 import com.project.fintech.persistence.repository.UserRepository;
-import jakarta.servlet.http.HttpSession;
 import java.util.Date;
 import java.util.concurrent.TimeUnit;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -22,12 +22,14 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AuthService {
 
     public static final String DISABLED_TOKEN_PREFIX = "JWT_BLACKLIST::";
     public static final String REFRESH_TOKEN_PREFIX = "JWT_REFRESH_TOKEN::";
+    public static final String OTP_COUNTING_PREFIX = "OTP_COUNTING::";
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final OtpUtil otpUtil;
@@ -151,6 +153,7 @@ public class AuthService {
             throw new CustomException(ErrorCode.INVALID_OTP_CODE);
         }
     }
+
 
     /**
      * OTP 인증 시도 횟수 session(redis)에 카운팅해서 저장

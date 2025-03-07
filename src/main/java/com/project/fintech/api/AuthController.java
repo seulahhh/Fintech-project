@@ -6,6 +6,7 @@ import com.project.fintech.model.dto.OtpVerificationDto;
 import com.project.fintech.model.dto.ResponseDto;
 import com.project.fintech.model.dto.TokenPairDto;
 import com.project.fintech.model.dto.UserEmailDto;
+import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -49,7 +50,7 @@ public class AuthController {
      * @return
      */
     @PostMapping("/auth/otp/verify")
-    public ResponseEntity<ResponseDto<String>> verifyOtpCode(@RequestBody OtpVerificationDto otpVerificationDto) {
-        return ResponseEntity.ok(authApplication.executeOtpVerification(otpVerificationDto));
+    public ResponseEntity<ResponseDto<String>> verifyOtpCode(@Valid @RequestBody OtpVerificationDto otpVerificationDto, HttpSession session) {
+        return ResponseEntity.ok(authApplication.executeOtpVerification(otpVerificationDto, session));
     }
 }
