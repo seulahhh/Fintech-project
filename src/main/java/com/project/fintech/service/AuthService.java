@@ -232,7 +232,7 @@ public class AuthService {
         if (current.before(expiration)) {
             long diffInMillis = expiration.getTime() - current.getTime();
             stringRedisTemplate.opsForValue()
-                .set(DISABLED_TOKEN_PREFIX + token, email, diffInMillis, TimeUnit.SECONDS);
+                .set(DISABLED_TOKEN_PREFIX + token, email, diffInMillis, TimeUnit.MILLISECONDS);
         }
     }
 
