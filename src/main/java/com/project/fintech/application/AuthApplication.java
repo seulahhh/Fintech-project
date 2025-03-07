@@ -43,15 +43,25 @@ public class AuthApplication {
     }
 
     /**
-     * OTP 재발급 시작하는 흐름
+     * OTP secret key 재발급 및 provisioning url 생성 시작 재발급 이후 /auth/otp/register 에서 OTP 등록을 해야 합니다
      *
-     * @param email
+     * @param userEmailDto
+     * @return provisioning URL
      */
-    public String issueNewOtpSecretAndSendUrl(String email) {
+    @Transactional
+    public ResponseDto<String> issueNewOtpSecretAndSendUrl(UserEmailDto userEmailDto) {
+        String userEmail = userEmailDto.getEmail();
+
+        authService.invalidateOtpSecretKey(userEmail);
+        authService.markOtpAsRegistered(userEmail, false);
         GoogleAuthenticatorKey otpSecretKey = otpUtil.createOtpSecretKey();
         String provisioningUrl = otpUtil.createProvisioningUrl(email, otpSecretKey);
         authService.saveOtpSecretKey(otpSecretKey.getKey(), email);
         return provisioningUrl;
+
+        String provisioningUrl = otpUtil.createProvisioningUrl(userEmail, otpSecretKey);
+        log.info("{}", otpSecretKey);
+        authService.saveOtpSecretKey(otpSecretKey.getKey(), userEmail);
     }
 
     /**
@@ -62,7 +72,8 @@ public class AuthApplication {
     public ResponseDto<String> completeOtpRegistration(OtpVerificationDto otpVerificationDto) {
         String email = otpVerificationDto.getEmail();
         int otpCode = Integer.parseInt(otpVerificationDto.getOtpCode());
-        authService.validateOtpCode(otpCode, email);
+        authService.verifyOtpCode(otpCode, email);
+        authService.deleteOtpAttempt(email);
         authService.markOtpAsRegistered(email, true);
         return ResponseDto.<String>builder().data(null).message(Message.COMPLETE_REGISTERED_OTP)
             .code(HttpServletResponse.SC_OK).build();
