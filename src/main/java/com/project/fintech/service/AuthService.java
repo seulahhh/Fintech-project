@@ -230,9 +230,9 @@ public class AuthService {
         Date current = new Date(System.currentTimeMillis());
 
         if (current.before(expiration)) {
-            long diffInMillies = expiration.getTime() - current.getTime();
+            long diffInMillis = expiration.getTime() - current.getTime();
             stringRedisTemplate.opsForValue()
-                .set(DISABLED_TOKEN_PREFIX + token, email, diffInMillies, TimeUnit.SECONDS);
+                .set(DISABLED_TOKEN_PREFIX + token, email, diffInMillis, TimeUnit.SECONDS);
         }
     }
 
