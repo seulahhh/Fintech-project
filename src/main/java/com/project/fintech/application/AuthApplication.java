@@ -1,21 +1,24 @@
 package com.project.fintech.application;
 
-import com.project.fintech.model.dto.ResponseDto;
 import com.project.fintech.auth.jwt.JwtUtil;
 import com.project.fintech.auth.otp.OtpUtil;
-import com.project.fintech.model.dto.OtpVerificationDto;
-import com.project.fintech.service.AuthService;
 import com.project.fintech.model.dto.IssueTokenRequestDto;
 import com.project.fintech.model.dto.LogoutRequestDto;
+import com.project.fintech.model.dto.OtpVerificationDto;
+import com.project.fintech.model.dto.ResponseDto;
 import com.project.fintech.model.dto.TokenPairDto;
+import com.project.fintech.model.dto.UserEmailDto;
 import com.project.fintech.model.type.Message;
+import com.project.fintech.service.AuthService;
 import com.warrenstrange.googleauth.GoogleAuthenticatorKey;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
 @Service
@@ -55,17 +58,17 @@ public class AuthApplication {
         authService.invalidateOtpSecretKey(userEmail);
         authService.markOtpAsRegistered(userEmail, false);
         GoogleAuthenticatorKey otpSecretKey = otpUtil.createOtpSecretKey();
-        String provisioningUrl = otpUtil.createProvisioningUrl(email, otpSecretKey);
-        authService.saveOtpSecretKey(otpSecretKey.getKey(), email);
-        return provisioningUrl;
 
         String provisioningUrl = otpUtil.createProvisioningUrl(userEmail, otpSecretKey);
         log.info("{}", otpSecretKey);
         authService.saveOtpSecretKey(otpSecretKey.getKey(), userEmail);
+        return ResponseDto.<String>builder().data(provisioningUrl).code(HttpServletResponse.SC_OK)
+            .message(Message.COMPLETE_ISSUE_SECRETKEY).build();
     }
 
     /**
      * 발급한 secretKey로 OTP 인증을 마치면 OTP 등록여부를 완료처리한다.
+     *
      * @param otpVerificationDto
      */
     @Transactional
@@ -80,18 +83,6 @@ public class AuthApplication {
     }
 
     /**
-     * OTP인증이 필요한 서비스에서 OTP검증 수행 흐름
-     *
-     * @param otpVerificationDto
-     */
-    public void executeOtpVerification(OtpVerificationDto otpVerificationDto) {
-        String email = otpVerificationDto.getEmail();
-        int code = Integer.parseInt(otpVerificationDto.getOtpCode());
-        authService.validateOtpCode(code, email);
-        // todo + 추후 redis에 OTP 인증 1회당 지속 유효시간과 함께 올리는 로직 추가
-    }
-
-    /**
      * 사용자가 로그인에 성공하면 Access Token과 Refresh Token을 발급해주는 흐름
      *
      * @param email
@@ -103,7 +94,6 @@ public class AuthApplication {
         String refreshToken = jwtUtil.generateRefreshToken(email);
         authService.storeRefreshToken(refreshToken, email);
         log.info("refreshToken = {}", refreshToken);
-        log.info("authapplication내부: {}", SecurityContextHolder.getContext().getAuthentication());
         return TokenPairDto.builder().accessToken(accessToken).refreshToken(refreshToken).build();
     }
 
@@ -147,7 +137,6 @@ public class AuthApplication {
 
         Authentication authentication = authService.getAuthenticationByToken(token);
         SecurityContextHolder.getContext().setAuthentication(authentication);
-        log.info(SecurityContextHolder.getContext().getAuthentication().getName());
     }
 
     /**
