@@ -39,9 +39,9 @@ public class AuthApplication {
         String email = otpVerificationDto.getEmail();
         int code = Integer.parseInt(otpVerificationDto.getOtpCode());
         authService.verifyOtpCode(code, email);
-        authService.deleteOtpAttempt(email);
-        authService.storeOtpSession(session);
-        return ResponseDto.<String>builder().data("OTP 인증 OK").message(Message.COMPLETE_VERIFY_OTP)
+        authService.resetOtpAttemptCounts(email);
+        session.setAttribute("OTPVerified", true);
+        return ResponseDto.<String>builder().data("").message(Message.COMPLETE_VERIFY_OTP)
             .code(HttpServletResponse.SC_OK).build();
     }
 
@@ -76,7 +76,7 @@ public class AuthApplication {
         String email = otpVerificationDto.getEmail();
         int otpCode = Integer.parseInt(otpVerificationDto.getOtpCode());
         authService.verifyOtpCode(otpCode, email);
-        authService.deleteOtpAttempt(email);
+        authService.resetOtpAttemptCounts(email);
         authService.markOtpAsRegistered(email, true);
         return ResponseDto.<String>builder().data(null).message(Message.COMPLETE_REGISTERED_OTP)
             .code(HttpServletResponse.SC_OK).build();

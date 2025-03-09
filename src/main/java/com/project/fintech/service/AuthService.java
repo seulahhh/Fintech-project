@@ -101,9 +101,7 @@ public class AuthService {
     public void invalidateOtpSecretKey(String email) {
         User user = userRepository.findByEmail(email)
             .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
-        OtpSecretKey otpSecretKey = otpSecretKeyRepository.findByUser(user)
-            .orElseThrow(() -> new CustomException(ErrorCode.OTP_SECRET_KEY_NOT_FOUND));
-        user.setOtpSecretKeyNull();
+        user.setUserSecretKey(null);
         userRepository.save(user);
     }
 
@@ -150,7 +148,7 @@ public class AuthService {
         String userSecretKey = getUserSecretKey(email);
         boolean codeValid = otpUtil.isCodeValid(userSecretKey, code);
         if (!codeValid) {
-            countOtpAttempt(email);
+            countUpOtpAttempt(email);
             throw new CustomException(ErrorCode.INVALID_OTP_CODE);
         }
     }
@@ -161,7 +159,7 @@ public class AuthService {
      *
      * @param email
      */
-    public void countOtpAttempt(String email) {
+    public void countUpOtpAttempt(String email) {
         long currentTimeInSeconds = System.currentTimeMillis() / 1000;
         int period = 30;
         long secondsPassed = currentTimeInSeconds % period;
@@ -170,7 +168,7 @@ public class AuthService {
         Long newCount = stringRedisTemplate.opsForValue().increment(OTP_COUNTING_PREFIX + email);
         if (newCount == 1) {
             stringRedisTemplate.expire(OTP_COUNTING_PREFIX + email, secondsRemaining,
-                TimeUnit.HOURS);
+                TimeUnit.SECONDS);
         }
     }
 
@@ -179,7 +177,7 @@ public class AuthService {
      *
      * @param email
      */
-    public void deleteOtpAttempt(String email) {
+    public void resetOtpAttemptCounts(String email) {
         stringRedisTemplate.delete(OTP_COUNTING_PREFIX + email);
     }
 
@@ -232,7 +230,7 @@ public class AuthService {
         if (current.before(expiration)) {
             long diffInMillis = expiration.getTime() - current.getTime();
             stringRedisTemplate.opsForValue()
-                .set(DISABLED_TOKEN_PREFIX + token, email, diffInMillis, TimeUnit.MILLISECONDS);
+                .set(DISABLED_TOKEN_PREFIX + token, email, diffInMillis, TimeUnit.SECONDS);
         }
     }
 
@@ -259,7 +257,7 @@ public class AuthService {
      */
     public void verifyNotDisabledAccessToken(String token, String email) {
         String userEmail = stringRedisTemplate.opsForValue().get(DISABLED_TOKEN_PREFIX + token);
-        if (stringRedisTemplate.hasKey(DISABLED_TOKEN_PREFIX + token) && userEmail.equals(email)) {
+        if (userEmail != null && userEmail.equals(email)) {
             throw new CustomException(ErrorCode.INVALID_TOKEN);
         }
     }

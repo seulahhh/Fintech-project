@@ -77,7 +77,7 @@ public class User extends BaseEntity implements UserDetails {
         isOtpRegistered = otpRegistered;
     }
 
-    public void setOtpSecretKeyNull() {
-        this.otpSecretKey = null;
+    public void setUserSecretKey(OtpSecretKey otpSecretKey) {
+        this.otpSecretKey = otpSecretKey;
     }
 }
