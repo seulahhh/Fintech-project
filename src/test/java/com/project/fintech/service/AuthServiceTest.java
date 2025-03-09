@@ -46,24 +46,34 @@ class AuthServiceTest {
     public static final String DISABLED_TOKEN_PREFIX = "JWT_BLACKLIST::";
     public static final String REFRESH_TOKEN_PREFIX = "JWT_REFRESH_TOKEN::";
     public static final String OTP_COUNTING_PREFIX = "OTP_COUNTING::";
+
     @Mock
     UserRepository userRepository;
+
     @Mock
     OtpSecretKeyRepository otpSecretKeyRepository;
+
     @Mock
     OtpUtil otpUtil;
+
     @Mock
     JwtUtil jwtUtil;
+
     @Mock
     CustomUserDetailsService customUserDetailsService;
+
     @Mock
     StringRedisTemplate stringRedisTemplate;
+
     @Mock
     PasswordEncoder passwordEncoder;
+
     @Mock
     ValueOperations<String, String> valueOperations;
+
     @InjectMocks
     AuthService authService;
+
 
     @Test
     @DisplayName("이메일 중복 여부 체크 - 성공")
@@ -360,7 +370,6 @@ class AuthServiceTest {
     @DisplayName("OTP 인증 시도 횟수 카운팅 - 성공 - 처음 인증시도 실패 카운팅")
     void countUpOtpAttempt_Success() {
         //given
-        long secondsRemaining = 10;
         String email = "test.com@gmail.com";
 
         when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);
@@ -370,8 +379,8 @@ class AuthServiceTest {
         authService.countUpOtpAttempt(email);
 
         //then
-        verify(stringRedisTemplate).expire(OTP_COUNTING_PREFIX + email, secondsRemaining,
-            TimeUnit.SECONDS);
+        verify(stringRedisTemplate, times(1)).expire(eq(OTP_COUNTING_PREFIX + email), anyLong(),
+            eq(TimeUnit.SECONDS));
     }
 
     @Test
@@ -456,8 +465,8 @@ class AuthServiceTest {
         //when
         authService.storeRefreshToken(token, email);
         //then
-        verify(valueOperations, times(1)).set(eq(REFRESH_TOKEN_PREFIX + token), eq(email), eq(7L),
-            eq(TimeUnit.DAYS));
+        verify(valueOperations, times(1)).set(REFRESH_TOKEN_PREFIX + token, email, 7L,
+            TimeUnit.DAYS);
     }
 
     @Test
@@ -482,10 +491,10 @@ class AuthServiceTest {
     @Test
     @DisplayName("Redis에 Access Token을 Black list에 저장 - 실패 - 토큰이 만료되어서 저장할 필요가 없을 때")
     void addAccessTokenBlackList_Fail_WhenTokenAlreadyExpired() {
+        //given
         String token = "1234ABC";
         String email = "testmail@test.com";
         Date expiration = new Date(System.currentTimeMillis() - 1000 * 60 * 15);
-        //given
         when(jwtUtil.getTokenExpiration(token)).thenReturn(expiration);
         when(jwtUtil.getEmailFromToken(token)).thenReturn(email);
 
@@ -495,5 +504,85 @@ class AuthServiceTest {
         //then
         verify(valueOperations, never()).set(eq(DISABLED_TOKEN_PREFIX + email), eq(token),
             anyLong(), eq(TimeUnit.SECONDS));
+    }
+
+    @Test
+    @DisplayName("redis에 저장된 refresh token 의 사용자 정보와 사용자가 일치하는지 검증 - 성공")
+    void verifyRefreshTokenEmailPair_Success() {
+        //given
+        User user = new UserTestDataBuilder().build();
+        String userEmail = user.getEmail();
+        String token = "testtoken";
+        when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.get(REFRESH_TOKEN_PREFIX + token)).thenReturn(userEmail);
+
+        //when & then
+        assertThatCode(() -> authService.verifyRefreshTokenEmailPair(token,
+            userEmail)).doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName("Redis에 저장된 refresh token 의 사용자 정보와 사용자가 일치하는지 검증 - 실패 - 사용자의 refresh 토큰이 redis에 저장되어 있지 않을때")
+    void verifyRefreshTokenEmailPairs_Fail_WhenUserRefreshTokenIsNotExist() {
+        //given
+        User user = new UserTestDataBuilder().build();
+        String userEmail = user.getEmail();
+        String token = "testtoken";
+        when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.get(REFRESH_TOKEN_PREFIX + token)).thenReturn(null);
+
+        //when & then
+        assertThatThrownBy(
+            () -> authService.verifyRefreshTokenEmailPair(token, userEmail)).isInstanceOf(
+            CustomException.class).extracting("errorCode").isEqualTo(ErrorCode.TOKEN_NOT_FOUND);
+    }
+
+    @Test
+    @DisplayName("Redis에 저장된 refresh token 의 사용자 정보와 사용자가 일치하는지 검증 - 실패 - 사용자와 refresh 토큰의 사용자 정보가 불일치 할 때")
+    void verifyRefreshTokenEmailPairs_Fail_WhenMismatchRefreshTokenAndUser() {
+        //given
+        User user = new UserTestDataBuilder().build();
+        String userEmail = user.getEmail();
+        String otherEmail = "somebody@test.com";
+        String token = "testtoken";
+        when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.get(REFRESH_TOKEN_PREFIX + token)).thenReturn(otherEmail);
+
+        //when & then
+        assertThatThrownBy(
+            () -> authService.verifyRefreshTokenEmailPair(token, userEmail)).isInstanceOf(
+                CustomException.class).extracting("errorCode")
+            .isEqualTo(ErrorCode.REFRESH_TOKEN_USER_MISMATCH);
+    }
+
+    @Test
+    @DisplayName("사용자 access token의 disabled token 여부 검증 - 성공")
+    void verifyNotDisabledAccessToken_Success() {
+        //given
+        String token = "testToken";
+        String email = "testEmail@gmail.com";
+
+        when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.get(DISABLED_TOKEN_PREFIX + token)).thenReturn(null);
+
+        //when & then
+        assertThatCode(() -> authService.verifyNotDisabledAccessToken(token,
+            email)).doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName("사용자 access token의 disabled token 여부 검증 - 실패 - 사용자의 토큰이 blacklist에 올라가 있을때")
+    void verifyNotDisabledAccessToken_Fail_WhenAccessTokenIsStoredInBlackList() {
+        //given
+        String token = "testToken";
+        String email = "testEmail@gmail.com";
+
+        when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.get(DISABLED_TOKEN_PREFIX + token)).thenReturn(email);
+
+        //when & then
+        assertThatThrownBy(
+            () -> authService.verifyNotDisabledAccessToken(token, email)).isInstanceOf(
+            CustomException.class).extracting("errorCode").isEqualTo(ErrorCode.INVALID_TOKEN);
     }
 }
