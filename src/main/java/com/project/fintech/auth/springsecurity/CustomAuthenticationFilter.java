@@ -40,7 +40,7 @@ public class CustomAuthenticationFilter extends UsernamePasswordAuthenticationFi
         } catch (IOException e) {
             throw new CustomException(ErrorCode.IO_OPERATION_FAILED);
         } catch (InternalAuthenticationServiceException e) {
-            throw new CustomException(ErrorCode.NOT_FOUND_USER);
+            throw new CustomException(ErrorCode.USER_NOT_FOUND);
         }
     }
 

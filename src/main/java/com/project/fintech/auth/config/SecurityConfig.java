@@ -3,10 +3,10 @@ package com.project.fintech.auth.config;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.project.fintech.application.AuthApplication;
 import com.project.fintech.auth.jwt.JwtFilter;
+import com.project.fintech.auth.otp.OtpFilter;
 import com.project.fintech.auth.springsecurity.CustomAuthenticationEntryPoint;
 import com.project.fintech.auth.springsecurity.CustomAuthenticationFilter;
 import com.project.fintech.auth.springsecurity.CustomLogoutHandler;
-import com.project.fintech.exception.ExceptionHandlingFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -29,14 +29,38 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     public static final String[] publicEndPoints = {"/auth/login", "/auth/jwt/issue", "/error",
-        "/auth/logout", "/", "/swagger-ui/**", "/v3/**", "/swagger-resources/**", "/api-docs/**"};
+        "/auth/logout", "/", "/swagger-ui/**", "/v3/**", "/swagger-resources/**", "/api-docs/**",
+        "/auth/email/verify", "/auth/otp/register"};
+    public static final String[] otpVerificationEndPoints = {"/transfer/**"};
     private final AuthApplication authApplication;
     private final PasswordEncoder passwordEncoder;
     private final UserDetailsService userDetailsService;
-    private final JwtFilter jwtFilter;
     private final ObjectMapper objectMapper;
     private final CustomAuthenticationEntryPoint customAuthenticationEntryPoint;
-    private final ExceptionHandlingFilter exceptionHandlingFilter;
+
+    /**
+     * OTP 인증이 필요한 경로에 대한 FilterChain
+     */
+    @Bean
+    public SecurityFilterChain otpSecurityFilterChain(HttpSecurity http) throws Exception {
+        OtpFilter otpFilter = new OtpFilter();
+        JwtFilter jwtFilter = new JwtFilter(authApplication);
+        http.securityMatcher(otpVerificationEndPoints)
+            .anonymous(AbstractHttpConfigurer::disable)
+            .csrf(AbstractHttpConfigurer::disable)
+            .sessionManagement(
+                session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .authorizeHttpRequests(
+                auth -> auth
+                    .anyRequest().authenticated())
+            .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
+            .addFilterAfter(otpFilter, UsernamePasswordAuthenticationFilter.class);
+        http.exceptionHandling(
+            exHandling -> exHandling.authenticationEntryPoint(customAuthenticationEntryPoint));
+
+        return http.build();
+    }
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http,
         AuthenticationManager authenticationManager) throws Exception {
@@ -44,7 +68,7 @@ public class SecurityConfig {
             authApplication, objectMapper);
         CustomLogoutHandler customLogoutHandler = new CustomLogoutHandler(authApplication,
             objectMapper);
-//        OtpFilter otpFilter = new OtpFilter();
+        JwtFilter jwtFilter = new JwtFilter(authApplication);
 
         http.authenticationProvider(daoAuthenticationProvider(userDetailsService, passwordEncoder))
             .anonymous(AbstractHttpConfigurer::disable);
@@ -52,14 +76,16 @@ public class SecurityConfig {
         customAuthenticationFilter.setAuthenticationManager(authenticationManager);
         customAuthenticationFilter.setFilterProcessesUrl("/auth/login");
 
-        http.csrf(AbstractHttpConfigurer::disable).sessionManagement(
+        http.csrf(AbstractHttpConfigurer::disable)
+            .sessionManagement(
                 session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(
                 auth ->
                     auth.requestMatchers(publicEndPoints).permitAll()
-                        .requestMatchers(HttpMethod.POST, "/users").permitAll().anyRequest().authenticated())
+                        .requestMatchers(HttpMethod.POST, "/users").permitAll().anyRequest()
+                        .authenticated())
             .formLogin(AbstractHttpConfigurer::disable)
-            .addFilterBefore(exceptionHandlingFilter, CustomAuthenticationFilter.class )
+//            .addFilterBefore(exceptionHandlingFilter, CustomAuthenticationFilter.class)
             .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterAt(customAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
             .logout(logout ->
@@ -67,10 +93,13 @@ public class SecurityConfig {
                     .logoutSuccessHandler((request, response, authentication) -> {
                         response.setStatus(HttpStatus.OK.value());
                     }));
-        http.exceptionHandling(exHandling -> exHandling.authenticationEntryPoint(customAuthenticationEntryPoint));
+        http.exceptionHandling(
+            exHandling -> exHandling.authenticationEntryPoint(customAuthenticationEntryPoint));
 
         return http.build();
     }
+
+
 
     @Bean
     public AuthenticationProvider daoAuthenticationProvider(UserDetailsService userDetailsService,

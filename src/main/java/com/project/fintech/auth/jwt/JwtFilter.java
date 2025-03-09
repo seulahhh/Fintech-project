@@ -9,12 +9,10 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 @Slf4j
 @RequiredArgsConstructor
-@Component
 public class JwtFilter extends OncePerRequestFilter {
 
     private final AuthApplication authApplication;
@@ -23,8 +21,6 @@ public class JwtFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
         FilterChain filterChain) throws ServletException, IOException {
 
-        String requestURI = request.getRequestURI();
-        String method = request.getMethod();
         if (request.getHeader("Authorization") == null) {
             filterChain.doFilter(request, response);
             return;
@@ -40,7 +36,6 @@ public class JwtFilter extends OncePerRequestFilter {
         }
         filterChain.doFilter(request, response);
     }
-
 }
 
 
