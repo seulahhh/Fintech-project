@@ -102,7 +102,7 @@ public class AuthService {
         User user = userRepository.findByEmail(email)
             .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
         user.setUserSecretKey(null);
-        userRepository.save(user);
+        user.setOtpRegistered(false);
     }
 
     /**

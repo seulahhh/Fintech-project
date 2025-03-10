@@ -215,7 +215,6 @@ class AuthServiceTest {
 
         //then
         assertThat(user.getOtpSecretKey()).isNull();
-        verify(userRepository, times(1)).save(user);
     }
 
     @Test
