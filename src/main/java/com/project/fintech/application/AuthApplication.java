@@ -12,7 +12,6 @@ import com.project.fintech.model.type.Message;
 import com.project.fintech.service.AuthService;
 import com.warrenstrange.googleauth.GoogleAuthenticatorKey;
 import jakarta.servlet.http.HttpServletResponse;
-import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
@@ -34,14 +33,11 @@ public class AuthApplication {
      *
      * @param otpVerificationDto
      */
-    public ResponseDto<String> executeOtpVerification(OtpVerificationDto otpVerificationDto,
-        HttpSession session) {
+    public ResponseDto<String> executeOtpVerification(OtpVerificationDto otpVerificationDto) {
         String email = otpVerificationDto.getEmail();
         int code = Integer.parseInt(otpVerificationDto.getOtpCode());
         authService.verifyOtpCode(code, email);
-        authService.resetOtpAttemptCounts(email);
-        session.setAttribute("OTPVerified", true);
-        return ResponseDto.<String>builder().data("").message(Message.COMPLETE_VERIFY_OTP)
+        return ResponseDto.<String>builder().data("OTPVerified").message(Message.COMPLETE_VERIFY_OTP)
             .code(HttpServletResponse.SC_OK).build();
     }
 

@@ -51,6 +51,9 @@ public class AuthController {
      */
     @PostMapping("/auth/otp/verify")
     public ResponseEntity<ResponseDto<String>> verifyOtpCode(@Valid @RequestBody OtpVerificationDto otpVerificationDto, HttpSession session) {
-        return ResponseEntity.ok(authApplication.executeOtpVerification(otpVerificationDto, session));
+        ResponseDto<String> responseDto = authApplication.executeOtpVerification(
+            otpVerificationDto);
+        session.setAttribute(responseDto.getData(), true);
+        return ResponseEntity.ok(responseDto);
     }
 }
