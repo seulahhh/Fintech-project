@@ -73,8 +73,7 @@ public class AuthService {
      */
     @Transactional
     public void markEmailAsVerified(String email) {
-        User user = userRepository.findByEmail(email)
-            .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+        User user = findUserByEmail(email);
         user.setVerifiedEmail(true);
     }
 
@@ -86,8 +85,7 @@ public class AuthService {
      */
     @Transactional
     public void saveOtpSecretKey(String secretKey, String email) {
-        User user = userRepository.findByEmail(email)
-            .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+        User user = findUserByEmail(email);
         OtpSecretKey otpSecretKey = OtpSecretKey.builder().secretKey(secretKey).user(user).build();
         otpSecretKeyRepository.save(otpSecretKey);
     }
@@ -99,8 +97,7 @@ public class AuthService {
      */
     @Transactional
     public void invalidateOtpSecretKey(String email) {
-        User user = userRepository.findByEmail(email)
-            .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+        User user = findUserByEmail(email);
         user.setUserSecretKey(null);
         user.setOtpRegistered(false);
     }
@@ -112,8 +109,7 @@ public class AuthService {
      */
     @Transactional
     public void markOtpAsRegistered(String email, Boolean bool) {
-        User user = userRepository.findByEmail(email)
-            .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+        User user = findUserByEmail(email);
         user.setOtpRegistered(bool);
     }
 
@@ -125,11 +121,21 @@ public class AuthService {
      */
     @Transactional
     public String getUserSecretKey(String email) {
-        User user = userRepository.findByEmail(email)
-            .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+        User user = findUserByEmail(email);
         OtpSecretKey otpSecretKey = otpSecretKeyRepository.findByUser(user)
             .orElseThrow(() -> new CustomException(ErrorCode.OTP_SECRET_KEY_NOT_FOUND));
         return otpSecretKey.getSecretKey();
+    }
+
+    /**
+     * email로 사용자를 찾고 찾지 못하면 예외 throw
+     * @param email
+     * @return
+     */
+    @Transactional
+    public User findUserByEmail(String email) {
+        return userRepository.findByEmail(email)
+            .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
     }
 
     /**
