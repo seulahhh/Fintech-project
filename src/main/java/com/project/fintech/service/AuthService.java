@@ -151,6 +151,8 @@ public class AuthService {
             countUpOtpAttempt(email);
             throw new CustomException(ErrorCode.INVALID_OTP_CODE);
         }
+
+        stringRedisTemplate.delete(OTP_COUNTING_PREFIX + email);
     }
 
 
@@ -170,15 +172,6 @@ public class AuthService {
             stringRedisTemplate.expire(OTP_COUNTING_PREFIX + email, secondsRemaining,
                 TimeUnit.SECONDS);
         }
-    }
-
-    /**
-     * 인증 시도 실패 횟수 삭제
-     *
-     * @param email
-     */
-    public void resetOtpAttemptCounts(String email) {
-        stringRedisTemplate.delete(OTP_COUNTING_PREFIX + email);
     }
 
     /**

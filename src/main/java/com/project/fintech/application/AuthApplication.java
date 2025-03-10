@@ -52,7 +52,6 @@ public class AuthApplication {
         String userEmail = userEmailDto.getEmail();
 
         authService.invalidateOtpSecretKey(userEmail);
-        authService.markOtpAsRegistered(userEmail, false);
         GoogleAuthenticatorKey otpSecretKey = otpUtil.createOtpSecretKey();
 
         String provisioningUrl = otpUtil.createProvisioningUrl(userEmail, otpSecretKey);
@@ -72,7 +71,6 @@ public class AuthApplication {
         String email = otpVerificationDto.getEmail();
         int otpCode = Integer.parseInt(otpVerificationDto.getOtpCode());
         authService.verifyOtpCode(otpCode, email);
-        authService.resetOtpAttemptCounts(email);
         authService.markOtpAsRegistered(email, true);
         return ResponseDto.<String>builder().data(null).message(Message.COMPLETE_REGISTERED_OTP)
             .code(HttpServletResponse.SC_OK).build();
