@@ -35,10 +35,10 @@ public class AuthApplication {
      */
     public ResponseDto<String> executeOtpVerification(OtpVerificationDto otpVerificationDto) {
         String email = otpVerificationDto.getEmail();
-        int code = Integer.parseInt(otpVerificationDto.getOtpCode());
+        int code = otpVerificationDto.getOtpCode();
         authService.verifyOtpCode(code, email);
-        return ResponseDto.<String>builder().data("OTPVerified").message(Message.COMPLETE_VERIFY_OTP)
-            .code(HttpServletResponse.SC_OK).build();
+        return ResponseDto.<String>builder().data("OTPVerified")
+            .message(Message.COMPLETE_VERIFY_OTP).code(HttpServletResponse.SC_OK).build();
     }
 
     /**
@@ -50,10 +50,9 @@ public class AuthApplication {
     @Transactional
     public ResponseDto<String> issueNewOtpSecretAndSendUrl(UserEmailDto userEmailDto) {
         String userEmail = userEmailDto.getEmail();
-
         authService.invalidateOtpSecretKey(userEmail);
-        GoogleAuthenticatorKey otpSecretKey = otpUtil.createOtpSecretKey();
 
+        GoogleAuthenticatorKey otpSecretKey = otpUtil.createOtpSecretKey();
         String provisioningUrl = otpUtil.createProvisioningUrl(userEmail, otpSecretKey);
         log.info("{}", otpSecretKey);
         authService.saveOtpSecretKey(otpSecretKey.getKey(), userEmail);
@@ -69,7 +68,7 @@ public class AuthApplication {
     @Transactional
     public ResponseDto<String> completeOtpRegistration(OtpVerificationDto otpVerificationDto) {
         String email = otpVerificationDto.getEmail();
-        int otpCode = Integer.parseInt(otpVerificationDto.getOtpCode());
+        int otpCode = otpVerificationDto.getOtpCode();
         authService.verifyOtpCode(otpCode, email);
         authService.markOtpAsRegistered(email, true);
         return ResponseDto.<String>builder().data(null).message(Message.COMPLETE_REGISTERED_OTP)
