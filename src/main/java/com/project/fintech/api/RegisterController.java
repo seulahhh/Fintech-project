@@ -6,7 +6,6 @@ import com.project.fintech.model.dto.OtpVerificationDto;
 import com.project.fintech.model.dto.RegisterRequestDto;
 import com.project.fintech.model.dto.ResponseDto;
 import com.project.fintech.model.dto.UserEmailDto;
-import com.project.fintech.model.type.Message;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
