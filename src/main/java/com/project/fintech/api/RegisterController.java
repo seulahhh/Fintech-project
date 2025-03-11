@@ -1,10 +1,11 @@
 package com.project.fintech.api;
 
+import com.project.fintech.application.AuthApplication;
 import com.project.fintech.application.RegisterApplication;
 import com.project.fintech.model.dto.OtpVerificationDto;
 import com.project.fintech.model.dto.RegisterRequestDto;
+import com.project.fintech.model.dto.ResponseDto;
 import com.project.fintech.model.dto.UserEmailDto;
-import com.project.fintech.model.type.Message;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class RegisterController {
 
     private final RegisterApplication registerApplication;
+    private final AuthApplication authApplication;
 
     /**
      * 회원가입 요청을 받으면 인증 메일 발송하기
@@ -27,7 +29,7 @@ public class RegisterController {
      * @return 이메일 인증 URL을 포함한 인증메일 body
      */
     @PostMapping("/users")
-    public ResponseEntity<String> sendRegisterEmail(
+    public ResponseEntity<ResponseDto<String>> sendRegisterEmail(
         @Valid @RequestBody RegisterRequestDto registerRequestDto) {
 
         return ResponseEntity.ok(registerApplication.handleRegisterRequest(registerRequestDto));
@@ -40,7 +42,7 @@ public class RegisterController {
      * @return OTP 등록 가능한 provisioning uri
      */
     @PostMapping("/auth/email/verify")
-    public ResponseEntity<String> verifyEmail(@Valid @RequestBody UserEmailDto UserEmailDto) {
+    public ResponseEntity<ResponseDto<String>> verifyEmail(@Valid @RequestBody UserEmailDto UserEmailDto) {
 
         return ResponseEntity.ok(registerApplication.completeEmailVerificationAndProvideOtpUrl(
             UserEmailDto));
@@ -53,9 +55,7 @@ public class RegisterController {
      * @return 등록 완료 message
      */
     @PostMapping("/auth/otp/register")
-    public ResponseEntity<Message> registerOtp(@Valid @RequestBody OtpVerificationDto otpVerificationDto) {
-        registerApplication.completeOtpRegistration(otpVerificationDto);
-
-        return ResponseEntity.ok(Message.COMPLETE_REGISTERED_OTP);
+    public ResponseEntity<ResponseDto<String>> registerOtp(@Valid @RequestBody OtpVerificationDto otpVerificationDto) {
+        return ResponseEntity.ok(authApplication.completeOtpRegistration(otpVerificationDto));
     }
 }

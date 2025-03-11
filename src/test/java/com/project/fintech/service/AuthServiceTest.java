@@ -5,6 +5,7 @@ import static org.assertj.core.api.AssertionsForClassTypes.assertThatCode;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -42,6 +43,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 @ExtendWith(MockitoExtension.class)
 class AuthServiceTest {
 
+    public static final String DISABLED_TOKEN_PREFIX = "JWT_BLACKLIST::";
+    public static final String REFRESH_TOKEN_PREFIX = "JWT_REFRESH_TOKEN::";
+    public static final String OTP_COUNTING_PREFIX = "OTP_COUNTING::";
+
     @Mock
     UserRepository userRepository;
 
@@ -69,9 +74,7 @@ class AuthServiceTest {
     @InjectMocks
     AuthService authService;
 
-    public static final String DISABLED_TOKEN_PREFIX = "JWT_BLACKLIST::";
-    public static final String REFRESH_TOKEN_PREFIX = "JWT_REFRESH_TOKEN::";
-    
+
     @Test
     @DisplayName("이메일 중복 여부 체크 - 성공")
     void isNotDuplicateEmail_Success() {
@@ -93,7 +96,7 @@ class AuthServiceTest {
 
         //when & then
         assertThatThrownBy(() -> authService.isNotDuplicateEmail(email)).isInstanceOf(
-            CustomException.class).extracting("errorCode").isEqualTo(ErrorCode.ALREADY_EXIST_EMAIL);
+            CustomException.class).extracting("errorCode").isEqualTo(ErrorCode.EMAIL_ALREADY_EXIST);
     }
 
     @Test
@@ -136,7 +139,7 @@ class AuthServiceTest {
         //when&then
         assertThatThrownBy(
             () -> authService.registerTemporaryUser(registerRequestDto)).isInstanceOf(
-            CustomException.class).extracting("errorCode").isEqualTo(ErrorCode.ALREADY_EXIST_EMAIL);
+            CustomException.class).extracting("errorCode").isEqualTo(ErrorCode.EMAIL_ALREADY_EXIST);
     }
 
     @Test
@@ -163,7 +166,7 @@ class AuthServiceTest {
 
         //when & then
         assertThatThrownBy(() -> authService.markEmailAsVerified(email)).isInstanceOf(
-            CustomException.class).extracting("errorCode").isEqualTo(ErrorCode.NOT_FOUND_USER);
+            CustomException.class).extracting("errorCode").isEqualTo(ErrorCode.USER_NOT_FOUND);
 
         verify(userRepository, times(1)).findByEmail(email);
     }
@@ -195,8 +198,37 @@ class AuthServiceTest {
 
         //when & then
         assertThatThrownBy(() -> authService.saveOtpSecretKey(secretKey, email)).isInstanceOf(
-            CustomException.class).extracting("errorCode").isEqualTo(ErrorCode.NOT_FOUND_USER);
+            CustomException.class).extracting("errorCode").isEqualTo(ErrorCode.USER_NOT_FOUND);
         verify(userRepository, times(1)).findByEmail(email);
+    }
+
+    @Test
+    @DisplayName("DB에 저장된 사용자의 OTP secret key 삭제 - 성공")
+    void invalidateOtpSecretKey_Success() {
+        //given
+        User user = new UserTestDataBuilder().build();
+        String email = user.getEmail();
+        when(userRepository.findByEmail(email)).thenReturn(Optional.of(user));
+
+        //when
+        authService.invalidateOtpSecretKey(email);
+
+        //then
+        assertThat(user.getOtpSecretKey()).isNull();
+    }
+
+    @Test
+    @DisplayName("DB에 저장된 사용자의 OTP secret key 삭제 - 실패(사용자를 찾지 못했을 때)")
+    void invalidateOtpSecretKey_Fail_WhenUserNotFound() {
+        //given
+        User user = new UserTestDataBuilder().build();
+        String email = user.getEmail();
+        when(userRepository.findByEmail(email)).thenReturn(Optional.empty());
+
+        //when & then
+        assertThatThrownBy(() -> authService.invalidateOtpSecretKey(email)).isInstanceOf(
+            CustomException.class).extracting("errorCode").isEqualTo(ErrorCode.USER_NOT_FOUND);
+        verify(userRepository, never()).save(user);
     }
 
     @Test
@@ -208,7 +240,7 @@ class AuthServiceTest {
 
         //when
         when(userRepository.findByEmail(email)).thenReturn(Optional.of(user));
-        authService.markOtpAsRegistered(email);
+        authService.markOtpAsRegistered(email, true);
 
         //then
         assertThat(user.getIsOtpRegistered()).isEqualTo(true);
@@ -225,8 +257,8 @@ class AuthServiceTest {
         when(userRepository.findByEmail(email)).thenReturn(Optional.empty());
 
         //then
-        assertThatThrownBy(() -> authService.markOtpAsRegistered(email)).isInstanceOf(
-            CustomException.class).extracting("errorCode").isEqualTo(ErrorCode.NOT_FOUND_USER);
+        assertThatThrownBy(() -> authService.markOtpAsRegistered(email, true)).isInstanceOf(
+            CustomException.class).extracting("errorCode").isEqualTo(ErrorCode.USER_NOT_FOUND);
     }
 
     @Test
@@ -259,7 +291,7 @@ class AuthServiceTest {
 
         //then
         assertThatThrownBy(() -> authService.getUserSecretKey(email)).isInstanceOf(
-            CustomException.class).extracting("errorCode").isEqualTo(ErrorCode.NOT_FOUND_USER);
+            CustomException.class).extracting("errorCode").isEqualTo(ErrorCode.USER_NOT_FOUND);
         verify(userRepository, times(1)).findByEmail(email);
 
     }
@@ -276,13 +308,14 @@ class AuthServiceTest {
 
         //when & then
         assertThatThrownBy(() -> authService.getUserSecretKey(email)).isInstanceOf(
-            CustomException.class).extracting("errorCode").isEqualTo(ErrorCode.OTP_NOT_REGISTERED);
+                CustomException.class).extracting("errorCode")
+            .isEqualTo(ErrorCode.OTP_SECRET_KEY_NOT_FOUND);
         verify(otpSecretKeyRepository, times(1)).findByUser(user);
     }
 
     @Test
     @DisplayName("사용자가 입력한 OTP 코드 검증 - 성공")
-    void validateOtpCode_Success() {
+    void verifyOtpCode_Success() {
         //given
         int code = 301304;
         User user = new UserTestDataBuilder().build();
@@ -292,14 +325,16 @@ class AuthServiceTest {
         when(userRepository.findByEmail(email)).thenReturn(Optional.of(user));
         when(otpSecretKeyRepository.findByUser(user)).thenReturn(Optional.of(otpSecretKey));
         when(otpUtil.isCodeValid(otpSecretKey.getSecretKey(), code)).thenReturn(true);
+        when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.get(OTP_COUNTING_PREFIX + email)).thenReturn("1");
 
         //when & then
-        assertThatCode(() -> authService.validateOtpCode(code, email)).doesNotThrowAnyException();
+        assertThatCode(() -> authService.verifyOtpCode(code, email)).doesNotThrowAnyException();
     }
 
     @Test
     @DisplayName("사용자가 입력한 OTP 코드 검증 - 실패(OTP 코드 검증에 실패했을 때)")
-    void validateOtpCode_Fail_WhenNotValidCode() {
+    void verifyOtpCode_Fail_WhenNotValidCode() {
         //given
         int code = 301304;
         User user = new UserTestDataBuilder().build();
@@ -308,10 +343,58 @@ class AuthServiceTest {
         when(userRepository.findByEmail(email)).thenReturn(Optional.of(user));
         when(otpSecretKeyRepository.findByUser(user)).thenReturn(Optional.of(otpSecretKey));
         when(otpUtil.isCodeValid(otpSecretKey.getSecretKey(), code)).thenReturn(false);
+        when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.get(OTP_COUNTING_PREFIX + email)).thenReturn("1");
 
         //when & then
-        assertThatThrownBy(() -> authService.validateOtpCode(code, email)).isInstanceOf(
+        assertThatThrownBy(() -> authService.verifyOtpCode(code, email)).isInstanceOf(
             CustomException.class).extracting("errorCode").isEqualTo(ErrorCode.INVALID_OTP_CODE);
+    }
+
+    @Test
+    @DisplayName("사용자가 입력한 OTP 코드 검증 - 실패(OTP 인증 시도 회수를 초과했을 때)")
+    void verifyOtpCode_Fail_WhenOtpAttemptExceeded() {
+        int code = 301304;
+        User user = new UserTestDataBuilder().build();
+        String email = user.getEmail();
+        when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.get(OTP_COUNTING_PREFIX + email)).thenReturn("3");
+
+        assertThatThrownBy(() -> authService.verifyOtpCode(code, email)).isInstanceOf(
+                CustomException.class).extracting("errorCode")
+            .isEqualTo(ErrorCode.OTP_ATTEMPT_EXCEEDED);
+    }
+
+    @Test
+    @DisplayName("OTP 인증 시도 횟수 카운팅 - 성공 - 처음 인증시도 실패 카운팅")
+    void countUpOtpAttempt_Success() {
+        //given
+        String email = "test.com@gmail.com";
+
+        when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.increment(OTP_COUNTING_PREFIX + email)).thenReturn(1L);
+
+        //when
+        authService.countUpOtpAttempt(email);
+
+        //then
+        verify(stringRedisTemplate, times(1)).expire(eq(OTP_COUNTING_PREFIX + email), anyLong(),
+            eq(TimeUnit.SECONDS));
+    }
+
+    @Test
+    @DisplayName("OTP 인증 시도 카운팅 - 성공 - 인증 시도 실패 2번째부터는 만료설정 없이 카운팅만 진행")
+    void countUpOtpAttempt_Success_NoExpireForSubsequentAttempts() {
+        //given
+        String email = "test.com@gmail.com";
+
+        when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.increment(OTP_COUNTING_PREFIX + email)).thenReturn(2L);
+        //when
+        authService.countUpOtpAttempt(email);
+
+        //then
+        verify(stringRedisTemplate, never()).expire(anyString(), anyLong(), any(TimeUnit.class));
     }
 
     @Test
@@ -339,11 +422,11 @@ class AuthServiceTest {
         String email = "testmail@test.com";
         when(jwtUtil.getEmailFromToken(token)).thenReturn(email);
         when(customUserDetailsService.loadUserByUsername(email)).thenThrow(
-            new CustomException(ErrorCode.NOT_FOUND_USER));
+            new CustomException(ErrorCode.USER_NOT_FOUND));
 
         // when & then
         assertThatThrownBy(() -> authService.getAuthenticationByToken(token)).isInstanceOf(
-            CustomException.class).extracting("errorCode").isEqualTo(ErrorCode.NOT_FOUND_USER);
+            CustomException.class).extracting("errorCode").isEqualTo(ErrorCode.USER_NOT_FOUND);
     }
 
     @Test
@@ -351,15 +434,13 @@ class AuthServiceTest {
     void invalidateRefreshToken_Success() {
         //given
         String refreshToken = "1234ABC";
-        when(stringRedisTemplate.hasKey(
-            REFRESH_TOKEN_PREFIX + refreshToken)).thenReturn(true);
+        when(stringRedisTemplate.hasKey(REFRESH_TOKEN_PREFIX + refreshToken)).thenReturn(true);
 
         //when
         authService.invalidateRefreshToken(refreshToken);
 
         //then
-        verify(stringRedisTemplate, times(1)).delete(
-            REFRESH_TOKEN_PREFIX + refreshToken);
+        verify(stringRedisTemplate, times(1)).delete(REFRESH_TOKEN_PREFIX + refreshToken);
     }
 
     @Test
@@ -367,11 +448,10 @@ class AuthServiceTest {
     void invalidateRefreshToken_Fail_WhenNotFoundToken() {
         //given
         String refreshToken = "1234ABC";
-        when(stringRedisTemplate.hasKey(
-            REFRESH_TOKEN_PREFIX + refreshToken)).thenReturn(false);
+        when(stringRedisTemplate.hasKey(REFRESH_TOKEN_PREFIX + refreshToken)).thenReturn(false);
         // when & then
         assertThatThrownBy(() -> authService.invalidateRefreshToken(refreshToken)).isInstanceOf(
-            CustomException.class).extracting("errorCode").isEqualTo(ErrorCode.TOKEN_NOT_EXIST);
+            CustomException.class).extracting("errorCode").isEqualTo(ErrorCode.TOKEN_NOT_FOUND);
     }
 
     @Test
@@ -384,9 +464,8 @@ class AuthServiceTest {
         //when
         authService.storeRefreshToken(token, email);
         //then
-        verify(valueOperations, times(1)).set(eq(REFRESH_TOKEN_PREFIX + token),
-            eq(email), eq(7L),
-            eq(TimeUnit.DAYS));
+        verify(valueOperations, times(1)).set(REFRESH_TOKEN_PREFIX + token, email, 7L,
+            TimeUnit.DAYS);
     }
 
     @Test
@@ -404,18 +483,17 @@ class AuthServiceTest {
         authService.addAccessTokenBlackList(token);
 
         //then
-        verify(valueOperations, times(1)).set(eq(DISABLED_TOKEN_PREFIX + token),
-            eq(email),
+        verify(valueOperations, times(1)).set(eq(DISABLED_TOKEN_PREFIX + token), eq(email),
             anyLong(), eq(TimeUnit.SECONDS));
     }
 
     @Test
     @DisplayName("Redis에 Access Token을 Black list에 저장 - 실패 - 토큰이 만료되어서 저장할 필요가 없을 때")
     void addAccessTokenBlackList_Fail_WhenTokenAlreadyExpired() {
+        //given
         String token = "1234ABC";
         String email = "testmail@test.com";
         Date expiration = new Date(System.currentTimeMillis() - 1000 * 60 * 15);
-        //given
         when(jwtUtil.getTokenExpiration(token)).thenReturn(expiration);
         when(jwtUtil.getEmailFromToken(token)).thenReturn(email);
 
@@ -423,8 +501,87 @@ class AuthServiceTest {
         authService.addAccessTokenBlackList(token);
 
         //then
-        verify(valueOperations, never()).set(eq(DISABLED_TOKEN_PREFIX + email),
-            eq(token),
+        verify(valueOperations, never()).set(eq(DISABLED_TOKEN_PREFIX + email), eq(token),
             anyLong(), eq(TimeUnit.SECONDS));
+    }
+
+    @Test
+    @DisplayName("redis에 저장된 refresh token 의 사용자 정보와 사용자가 일치하는지 검증 - 성공")
+    void verifyRefreshTokenEmailPair_Success() {
+        //given
+        User user = new UserTestDataBuilder().build();
+        String userEmail = user.getEmail();
+        String token = "testtoken";
+        when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.get(REFRESH_TOKEN_PREFIX + token)).thenReturn(userEmail);
+
+        //when & then
+        assertThatCode(() -> authService.verifyRefreshTokenEmailPair(token,
+            userEmail)).doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName("Redis에 저장된 refresh token 의 사용자 정보와 사용자가 일치하는지 검증 - 실패 - 사용자의 refresh 토큰이 redis에 저장되어 있지 않을때")
+    void verifyRefreshTokenEmailPairs_Fail_WhenUserRefreshTokenIsNotExist() {
+        //given
+        User user = new UserTestDataBuilder().build();
+        String userEmail = user.getEmail();
+        String token = "testtoken";
+        when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.get(REFRESH_TOKEN_PREFIX + token)).thenReturn(null);
+
+        //when & then
+        assertThatThrownBy(
+            () -> authService.verifyRefreshTokenEmailPair(token, userEmail)).isInstanceOf(
+            CustomException.class).extracting("errorCode").isEqualTo(ErrorCode.TOKEN_NOT_FOUND);
+    }
+
+    @Test
+    @DisplayName("Redis에 저장된 refresh token 의 사용자 정보와 사용자가 일치하는지 검증 - 실패 - 사용자와 refresh 토큰의 사용자 정보가 불일치 할 때")
+    void verifyRefreshTokenEmailPairs_Fail_WhenMismatchRefreshTokenAndUser() {
+        //given
+        User user = new UserTestDataBuilder().build();
+        String userEmail = user.getEmail();
+        String otherEmail = "somebody@test.com";
+        String token = "testtoken";
+        when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.get(REFRESH_TOKEN_PREFIX + token)).thenReturn(otherEmail);
+
+        //when & then
+        assertThatThrownBy(
+            () -> authService.verifyRefreshTokenEmailPair(token, userEmail)).isInstanceOf(
+                CustomException.class).extracting("errorCode")
+            .isEqualTo(ErrorCode.REFRESH_TOKEN_USER_MISMATCH);
+    }
+
+    @Test
+    @DisplayName("사용자 access token의 disabled token 여부 검증 - 성공")
+    void verifyNotDisabledAccessToken_Success() {
+        //given
+        String token = "testToken";
+        String email = "testEmail@gmail.com";
+
+        when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.get(DISABLED_TOKEN_PREFIX + token)).thenReturn(null);
+
+        //when & then
+        assertThatCode(() -> authService.verifyNotDisabledAccessToken(token,
+            email)).doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName("사용자 access token의 disabled token 여부 검증 - 실패 - 사용자의 토큰이 blacklist에 올라가 있을때")
+    void verifyNotDisabledAccessToken_Fail_WhenAccessTokenIsStoredInBlackList() {
+        //given
+        String token = "testToken";
+        String email = "testEmail@gmail.com";
+
+        when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.get(DISABLED_TOKEN_PREFIX + token)).thenReturn(email);
+
+        //when & then
+        assertThatThrownBy(
+            () -> authService.verifyNotDisabledAccessToken(token, email)).isInstanceOf(
+            CustomException.class).extracting("errorCode").isEqualTo(ErrorCode.INVALID_TOKEN);
     }
 }

@@ -13,6 +13,7 @@ import com.project.fintech.persistence.repository.UserRepository;
 import java.util.Date;
 import java.util.concurrent.TimeUnit;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -21,10 +22,14 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AuthService {
 
+    public static final String DISABLED_TOKEN_PREFIX = "JWT_BLACKLIST::";
+    public static final String REFRESH_TOKEN_PREFIX = "JWT_REFRESH_TOKEN::";
+    public static final String OTP_COUNTING_PREFIX = "OTP_COUNTING::";
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final OtpUtil otpUtil;
@@ -32,9 +37,6 @@ public class AuthService {
     private final OtpSecretKeyRepository otpSecretKeyRepository;
     private final CustomUserDetailsService customUserDetailsService;
     private final StringRedisTemplate stringRedisTemplate;
-
-    public static final String DISABLED_TOKEN_PREFIX = "JWT_BLACKLIST::";
-    public static final String REFRESH_TOKEN_PREFIX = "JWT_REFRESH_TOKEN::";
 
     /**
      * 이메일 중복 여부 체크
@@ -44,7 +46,7 @@ public class AuthService {
      */
     public void isNotDuplicateEmail(String email) {
         if (userRepository.existsByEmail(email)) {
-            throw new CustomException(ErrorCode.ALREADY_EXIST_EMAIL);
+            throw new CustomException(ErrorCode.EMAIL_ALREADY_EXIST);
         }
     }
 
@@ -71,8 +73,7 @@ public class AuthService {
      */
     @Transactional
     public void markEmailAsVerified(String email) {
-        User user = userRepository.findByEmail(email)
-            .orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND_USER));
+        User user = findUserByEmail(email);
         user.setVerifiedEmail(true);
     }
 
@@ -84,22 +85,32 @@ public class AuthService {
      */
     @Transactional
     public void saveOtpSecretKey(String secretKey, String email) {
-        User user = userRepository.findByEmail(email)
-            .orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND_USER));
+        User user = findUserByEmail(email);
         OtpSecretKey otpSecretKey = OtpSecretKey.builder().secretKey(secretKey).user(user).build();
-        otpSecretKeyRepository.save(otpSecretKey);
+        user.setUserSecretKey(otpSecretKey);
     }
 
     /**
-     * OTP 등록 여부를 전환 (isRegistredOtp = true)
+     * DB에 저장된 사용자의 OTP secret key 삭제 (OTP 재등록 시, disabled 시)
+     *
+     * @param email userEmail
+     */
+    @Transactional
+    public void invalidateOtpSecretKey(String email) {
+        User user = findUserByEmail(email);
+        user.setUserSecretKey(null);
+        user.setOtpRegistered(false);
+    }
+
+    /**
+     * OTP 등록 여부를 전환
      *
      * @param email
      */
     @Transactional
-    public void markOtpAsRegistered(String email) {
-        User user = userRepository.findByEmail(email)
-            .orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND_USER));
-        user.setOtpRegistered(true);
+    public void markOtpAsRegistered(String email, Boolean bool) {
+        User user = findUserByEmail(email);
+        user.setOtpRegistered(bool);
     }
 
     /**
@@ -110,11 +121,21 @@ public class AuthService {
      */
     @Transactional
     public String getUserSecretKey(String email) {
-        User user = userRepository.findByEmail(email)
-            .orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND_USER));
+        User user = findUserByEmail(email);
         OtpSecretKey otpSecretKey = otpSecretKeyRepository.findByUser(user)
-            .orElseThrow(() -> new CustomException(ErrorCode.OTP_NOT_REGISTERED));
+            .orElseThrow(() -> new CustomException(ErrorCode.OTP_SECRET_KEY_NOT_FOUND));
         return otpSecretKey.getSecretKey();
+    }
+
+    /**
+     * email로 사용자를 찾고 찾지 못하면 예외 throw
+     * @param email
+     * @return
+     */
+    @Transactional
+    public User findUserByEmail(String email) {
+        return userRepository.findByEmail(email)
+            .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
     }
 
     /**
@@ -124,11 +145,38 @@ public class AuthService {
      * @param email
      */
     @Transactional
-    public void validateOtpCode(int code, String email) {
+    public void verifyOtpCode(int code, String email) {
+        String attemptedCount = stringRedisTemplate.opsForValue().get(OTP_COUNTING_PREFIX + email);
+        if (attemptedCount != null && Integer.parseInt(attemptedCount) >= 3) {
+            throw new CustomException(ErrorCode.OTP_ATTEMPT_EXCEEDED);
+        }
+
         String userSecretKey = getUserSecretKey(email);
         boolean codeValid = otpUtil.isCodeValid(userSecretKey, code);
         if (!codeValid) {
+            countUpOtpAttempt(email);
             throw new CustomException(ErrorCode.INVALID_OTP_CODE);
+        }
+
+        stringRedisTemplate.delete(OTP_COUNTING_PREFIX + email);
+    }
+
+
+    /**
+     * OTP 인증 시도 횟수 session(redis)에 카운팅해서 저장
+     *
+     * @param email
+     */
+    public void countUpOtpAttempt(String email) {
+        long currentTimeInSeconds = System.currentTimeMillis() / 1000;
+        int period = 30;
+        long secondsPassed = currentTimeInSeconds % period;
+        long secondsRemaining = period - secondsPassed;
+
+        Long newCount = stringRedisTemplate.opsForValue().increment(OTP_COUNTING_PREFIX + email);
+        if (newCount == 1) {
+            stringRedisTemplate.expire(OTP_COUNTING_PREFIX + email, secondsRemaining,
+                TimeUnit.SECONDS);
         }
     }
 
@@ -152,7 +200,7 @@ public class AuthService {
      */
     public void invalidateRefreshToken(String refreshToken) {
         if (!stringRedisTemplate.hasKey(REFRESH_TOKEN_PREFIX + refreshToken)) {
-            throw new CustomException(ErrorCode.TOKEN_NOT_EXIST);
+            throw new CustomException(ErrorCode.TOKEN_NOT_FOUND);
         }
         stringRedisTemplate.delete(REFRESH_TOKEN_PREFIX + refreshToken);
     }
@@ -179,10 +227,9 @@ public class AuthService {
         Date current = new Date(System.currentTimeMillis());
 
         if (current.before(expiration)) {
-            long diffInMillies = expiration.getTime() - current.getTime();
+            long diffInMillis = expiration.getTime() - current.getTime();
             stringRedisTemplate.opsForValue()
-                .set(DISABLED_TOKEN_PREFIX + token, email, diffInMillies,
-                    TimeUnit.SECONDS);
+                .set(DISABLED_TOKEN_PREFIX + token, email, diffInMillis, TimeUnit.SECONDS);
         }
     }
 
@@ -193,10 +240,9 @@ public class AuthService {
      * @param email user email
      */
     public void verifyRefreshTokenEmailPair(String token, String email) {
-        String userEmail = stringRedisTemplate.opsForValue()
-            .get(REFRESH_TOKEN_PREFIX + token);
+        String userEmail = stringRedisTemplate.opsForValue().get(REFRESH_TOKEN_PREFIX + token);
         if (userEmail == null) {
-            throw new CustomException(ErrorCode.TOKEN_NOT_EXIST);
+            throw new CustomException(ErrorCode.TOKEN_NOT_FOUND);
         } else if (!userEmail.equals(email)) {
             throw new CustomException(ErrorCode.REFRESH_TOKEN_USER_MISMATCH);
         }
@@ -209,10 +255,8 @@ public class AuthService {
      * @param email
      */
     public void verifyNotDisabledAccessToken(String token, String email) {
-        String userEmail = stringRedisTemplate.opsForValue()
-            .get(DISABLED_TOKEN_PREFIX + token);
-        if (stringRedisTemplate.hasKey(DISABLED_TOKEN_PREFIX + token)
-            && userEmail.equals(email)) {
+        String userEmail = stringRedisTemplate.opsForValue().get(DISABLED_TOKEN_PREFIX + token);
+        if (userEmail != null && userEmail.equals(email)) {
             throw new CustomException(ErrorCode.INVALID_TOKEN);
         }
     }

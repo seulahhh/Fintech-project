@@ -24,6 +24,7 @@ public class CustomLogoutHandler implements LogoutHandler {
             LogoutRequestDto logoutRequestDto = objectMapper.readValue(request.getInputStream(),
                 LogoutRequestDto.class);
             authApplication.processTokenWhenLogout(logoutRequestDto);
+            request.getSession().invalidate();
         } catch (IOException e) {
             throw new CustomException(ErrorCode.IO_OPERATION_FAILED);
         }
