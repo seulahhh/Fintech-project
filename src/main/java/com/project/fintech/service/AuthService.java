@@ -87,7 +87,7 @@ public class AuthService {
     public void saveOtpSecretKey(String secretKey, String email) {
         User user = findUserByEmail(email);
         OtpSecretKey otpSecretKey = OtpSecretKey.builder().secretKey(secretKey).user(user).build();
-        otpSecretKeyRepository.save(otpSecretKey);
+        user.setUserSecretKey(otpSecretKey);
     }
 
     /**
