@@ -35,6 +35,7 @@ public class Transaction {
 
     private String memo;
 
+    @Enumerated(EnumType.STRING)
     private TransactionType transactionType;
 
     private LocalDate transactionDate;

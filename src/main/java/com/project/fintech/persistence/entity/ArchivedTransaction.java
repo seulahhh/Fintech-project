@@ -40,6 +40,7 @@ public class ArchivedTransaction {
 
     private String memo;
 
+    @Enumerated(EnumType.STRING)
     private TransactionType transactionType;
 
     private LocalDate transactionDate;
