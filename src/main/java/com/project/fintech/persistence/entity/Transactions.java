@@ -29,7 +29,7 @@ public class Transactions {
 
     private Long amount;
 
-    private Long recipient_account_id;
+    private Long recipientAccountId;
 
     private String memo;
 

@@ -11,9 +11,17 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 @Entity
+@Getter
+@Builder
 @Table(name="archived_transactions")
+@AllArgsConstructor
+@NoArgsConstructor
 public class ArchivedTransactions {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -25,7 +33,7 @@ public class ArchivedTransactions {
 
     private Long amount;
 
-    private Long recipient_account_id;
+    private Long recipientAccountId;
 
     private String memo;
 
