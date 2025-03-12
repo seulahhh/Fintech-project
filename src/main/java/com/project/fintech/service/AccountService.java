@@ -4,11 +4,14 @@ import com.project.fintech.exception.CustomException;
 import com.project.fintech.exception.ErrorCode;
 import com.project.fintech.model.dto.domain.TransactionMapper;
 import com.project.fintech.persistence.entity.Account;
+import com.project.fintech.persistence.entity.ArchivedTransaction;
+import com.project.fintech.persistence.entity.Transaction;
 import com.project.fintech.persistence.entity.User;
 import com.project.fintech.persistence.repository.AccountRepository;
 import com.project.fintech.persistence.repository.ArchivedTransactionRepository;
 import com.project.fintech.persistence.repository.UserRepository;
 import java.security.SecureRandom;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,7 +30,6 @@ public class AccountService {
 
     /**
      * email 로 User 가져오기
-     *
      * @param email
      * @return User
      */
@@ -64,6 +66,37 @@ public class AccountService {
         Account account = Account.builder().accountNumber(createAccountNumber()).user(user).build();
         user.getAccount().add(account);
         return account;
+    }
+
+    /**
+     * 게좌 삭제하기(Soft delete)
+     *
+     * @param user
+     * @param account
+     */
+    @Transactional
+    public void deleteAccount(User user, Account account) {
+        if (user.getAccount().stream().noneMatch(userAccount -> userAccount == account)) {
+            throw new CustomException(ErrorCode.ACCOUNT_USER_MISMATCH);
+        }
+        account.setStatusDisable();
+        moveTransactionsToArchive(account);
+    }
+
+    /**
+     * 해당 계좌번호의 transaction을 Archived transaction 테이블로 옮기기
+     *
+     * @param account
+     */
+    private void moveTransactionsToArchive(Account account) {
+        List<Transaction> transactionsList = account.getTransactions();
+
+        if (!transactionsList.isEmpty()) {
+            List<ArchivedTransaction> archivedTransactionList = transactionsList.stream()
+                .map(transactionMapper::toArchivedTransactions).toList();
+            archivedTransactionRepository.saveAll(archivedTransactionList);
+            account.getTransactions().clear();
+        }
     }
 
     /**

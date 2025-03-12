@@ -46,4 +46,8 @@ public class Account extends BaseEntity {
     @Enumerated
     @Default
     private Status status = Status.ACTIVE;
+
+    public void setStatusDisable() {
+        this.status = Status.DISABLED;
+    }
 }

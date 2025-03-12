@@ -3,6 +3,7 @@ package com.project.fintech.model.type;
 import com.fasterxml.jackson.annotation.JsonValue;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import org.codehaus.plexus.component.repository.exception.ComponentLifecycleException;
 import org.springframework.data.web.JsonPath;
 
 @Getter
@@ -13,9 +14,9 @@ public enum Message {
     COMPLETE_VERIFY_OTP("OTP 인증이 완료"),
     COMPLETE_SEND_EMAIL("메일 전송 완료"),
     COMPLETE_ISSUE_TOKEN("토큰 발급 완료"),
-    COMPLETE_ISSUE_SECRETKEY("secret key 발급 완료")
     COMPLETE_ISSUE_SECRETKEY("secret key 발급 완료"),
     COMPLETE_CREAT_ACCOUNT("계좌 계설 완료"),
+    COMPLETE_DELETE_ACCOUNT("계좌 삭제 완료")
     ;
     @JsonValue
     private final String message;

@@ -6,6 +6,8 @@ import com.project.fintech.model.dto.domain.AccountDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -23,5 +25,15 @@ public class AccountsController {
     @PostMapping("/accounts")
     public ResponseEntity<ResponseDto<AccountDto>> createAccount() {
         return ResponseEntity.ok(accountApplication.executeCreateAccount());
+    }
+
+    /**
+     * 계좌 삭제(Soft Delete)
+     * @param accountId
+     * @return
+     */
+    @DeleteMapping("/accounts/{accountId}")
+    public ResponseEntity<?> deleteAccount(@PathVariable Long accountId) {
+        return ResponseEntity.ok(accountApplication.executeSoftDeleteAccount(accountId));
     }
 }
