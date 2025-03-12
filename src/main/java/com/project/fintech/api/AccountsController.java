@@ -33,7 +33,7 @@ public class AccountsController {
      * @return
      */
     @DeleteMapping("/accounts/{accountId}")
-    public ResponseEntity<?> deleteAccount(@PathVariable Long accountId) {
+    public ResponseEntity<ResponseDto<AccountDto>> deleteAccount(@PathVariable Long accountId) {
         return ResponseEntity.ok(accountApplication.executeSoftDeleteAccount(accountId));
     }
 }
