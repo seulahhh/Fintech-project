@@ -64,6 +64,11 @@ public class UserTestDataBuilder {
         return this;
     }
 
+    public UserTestDataBuilder withAccounts(List<Account> accounts) {
+        this.accounts = accounts;
+        return this;
+    }
+
     public User build() {
         return User.builder()
             .id(id)
