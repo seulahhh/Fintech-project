@@ -10,6 +10,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import lombok.AllArgsConstructor;
@@ -43,7 +44,8 @@ public class User extends BaseEntity implements UserDetails {
     private OtpSecretKey otpSecretKey;
 
     @OneToMany (mappedBy = "user")
-    private List<Account> account;
+    @Builder.Default
+    private List<Account> account = new ArrayList<>();
 
     @Builder.Default
     private Boolean isVerifiedEmail = false;
