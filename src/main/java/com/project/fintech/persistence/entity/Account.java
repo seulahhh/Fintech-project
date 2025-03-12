@@ -22,7 +22,6 @@ import lombok.NoArgsConstructor;
 @Entity
 @Getter
 @Builder
-@RequiredArgsConstructor
 @Table(name="accounts")
 @AllArgsConstructor
 @NoArgsConstructor
@@ -36,7 +35,7 @@ public class Account extends BaseEntity {
     private User user;
 
     @OneToMany(mappedBy = "account", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Transactions> transactions;
+    private List<Transaction> transactions;
 
     @Column(unique = true)
     private String accountNumber;
