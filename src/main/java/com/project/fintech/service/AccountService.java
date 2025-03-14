@@ -80,6 +80,9 @@ public class AccountService {
         if (user.getAccount().stream().noneMatch(userAccount -> userAccount == account)) {
             throw new CustomException(ErrorCode.ACCOUNT_USER_MISMATCH);
         }
+        if (account.getBalance() > 0L) {
+            throw new CustomException(ErrorCode.ACCOUNT_BALANCE_NOT_ZERO);
+        }
         account.disabled();
         moveTransactionsToArchive(account);
     }
