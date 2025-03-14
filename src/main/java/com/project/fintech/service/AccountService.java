@@ -30,6 +30,7 @@ public class AccountService {
 
     /**
      * email 로 User 가져오기
+     *
      * @param email
      * @return User
      */
@@ -64,7 +65,7 @@ public class AccountService {
             throw new CustomException(ErrorCode.ACCOUNT_CREATION_LIMIT_EXCEEDED);
         }
         Account account = Account.builder().accountNumber(createAccountNumber()).user(user).build();
-        user.getAccount().add(account);
+        user.addAccount(account);
         return account;
     }
 

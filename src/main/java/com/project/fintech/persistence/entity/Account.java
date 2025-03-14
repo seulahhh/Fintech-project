@@ -50,4 +50,8 @@ public class Account extends BaseEntity {
     public void disabled() {
         this.status = Status.DISABLED;
     }
+
+    public void clearTransactions() {
+        this.transactions.clear();
+    }
 }

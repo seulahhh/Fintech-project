@@ -82,4 +82,8 @@ public class User extends BaseEntity implements UserDetails {
     public void setUserSecretKey(OtpSecretKey otpSecretKey) {
         this.otpSecretKey = otpSecretKey;
     }
+
+    public void addAccount(Account account) {
+        this.account.add(account);
+    }
 }
