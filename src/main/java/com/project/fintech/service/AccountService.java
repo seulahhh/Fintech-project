@@ -3,6 +3,7 @@ package com.project.fintech.service;
 import com.project.fintech.exception.CustomException;
 import com.project.fintech.exception.ErrorCode;
 import com.project.fintech.model.dto.domain.TransactionMapper;
+import com.project.fintech.model.type.Status;
 import com.project.fintech.persistence.entity.Account;
 import com.project.fintech.persistence.entity.ArchivedTransaction;
 import com.project.fintech.persistence.entity.Transaction;
@@ -48,8 +49,12 @@ public class AccountService {
      */
     @Transactional
     public Account getAccountById(Long accountId) {
-        return accountRepository.findById(accountId)
+        Account account = accountRepository.findById(accountId)
             .orElseThrow(() -> new CustomException(ErrorCode.ACCOUNT_NOT_FOUND));
+        if (account.getStatus() == Status.DISABLED) {
+            throw new CustomException(ErrorCode.ACCOUNT_NOT_FOUND);
+        }
+        return account;
     }
 
     /**
