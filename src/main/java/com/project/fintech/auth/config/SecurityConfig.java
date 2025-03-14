@@ -31,7 +31,7 @@ public class SecurityConfig {
     public static final String[] publicEndPoints = {"/auth/login", "/auth/jwt/issue", "/error",
         "/auth/logout", "/", "/swagger-ui/**", "/v3/**", "/swagger-resources/**", "/api-docs/**",
         "/auth/email/verify", "/auth/otp/register"};
-    public static final String[] otpVerificationEndPoints = {"/transfer/**"};
+    public static final String[] otpVerificationEndPoints = {"/accounts/**"};
     private final AuthApplication authApplication;
     private final PasswordEncoder passwordEncoder;
     private final UserDetailsService userDetailsService;

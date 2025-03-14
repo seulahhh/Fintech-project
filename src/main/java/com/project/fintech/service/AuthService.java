@@ -99,7 +99,7 @@ public class AuthService {
     public void invalidateOtpSecretKey(String email) {
         User user = findUserByEmail(email);
         user.setUserSecretKey(null);
-        user.setOtpRegistered(false);
+        user.toggleOtpRegistration(false);
     }
 
     /**
@@ -110,7 +110,7 @@ public class AuthService {
     @Transactional
     public void markOtpAsRegistered(String email, Boolean bool) {
         User user = findUserByEmail(email);
-        user.setOtpRegistered(bool);
+        user.toggleOtpRegistration(bool);
     }
 
     /**

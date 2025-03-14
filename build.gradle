@@ -75,7 +75,9 @@ dependencies {
 	implementation 'org.springframework.data:spring-data-redis'
 	implementation 'org.springframework.session:spring-session-data-redis'
 	testImplementation 'com.github.codemonstur:embedded-redis:1.4.3'
-
+	//Map Struct
+	implementation 'org.mapstruct:mapstruct:1.5.5.Final'
+	annotationProcessor 'org.mapstruct:mapstruct-processor:1.5.5.Final'
 }
 
 tasks.named('test') {

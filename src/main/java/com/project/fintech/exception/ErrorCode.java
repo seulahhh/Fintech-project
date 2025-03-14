@@ -23,7 +23,11 @@ public enum ErrorCode {
 
     IO_OPERATION_FAILED("입출력 작업 중 오류가 발생했습니다.", "IO-001", HttpStatus.BAD_REQUEST),
 
-    INTERNAL_SERVER_ERROR("서버 내부 오류가 발생하였습니다", "SERVER", HttpStatus.INTERNAL_SERVER_ERROR);
+    INTERNAL_SERVER_ERROR("서버 내부 오류가 발생하였습니다.", "SERVER", HttpStatus.INTERNAL_SERVER_ERROR),
+    ACCOUNT_NOT_FOUND("계좌를 찾을 수 없습니다.", "ACCOUNT-001", HttpStatus.BAD_REQUEST),
+    ACCOUNT_CREATION_LIMIT_EXCEEDED("최대 계설 가능 개수를 초과하였습니다", "ACCOUNT-002", HttpStatus.BAD_REQUEST),
+    ACCOUNT_USER_MISMATCH(
+        "계좌번호와 사용자의 정보가 일치하지 않습니다.", "ACCUONT-003", HttpStatus.BAD_REQUEST);
 
     private final String detail;
     private final String code;

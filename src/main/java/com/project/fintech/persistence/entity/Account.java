@@ -1,6 +1,8 @@
 package com.project.fintech.persistence.entity;
 
 import com.project.fintech.model.type.Status;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
@@ -13,15 +15,16 @@ import jakarta.persistence.Table;
 import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
+import lombok.Builder.Default;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
+import lombok.NoArgsConstructor;
 
 @Entity
 @Getter
 @Builder
-@RequiredArgsConstructor
 @Table(name="accounts")
 @AllArgsConstructor
+@NoArgsConstructor
 public class Account extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -31,13 +34,24 @@ public class Account extends BaseEntity {
     @JoinColumn(name = "user_id")
     private User user;
 
-    @OneToMany(mappedBy = "account")
-    private List<Transactions> transactions;
+    @OneToMany(mappedBy = "account", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Transaction> transactions;
 
+    @Column(unique = true)
     private String accountNumber;
 
-    private Long balance;
+    @Default
+    private Long balance = 0L;
 
     @Enumerated
-    private Status status;
+    @Default
+    private Status status = Status.ACTIVE;
+
+    public void disabled() {
+        this.status = Status.DISABLED;
+    }
+
+    public void clearTransactions() {
+        this.transactions.clear();
+    }
 }
