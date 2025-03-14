@@ -135,7 +135,6 @@ public class AccountService {
      *
      * @return account number
      */
-    @Transactional
     public String createAccountNumber() {
         SecureRandom secureRandom = new SecureRandom();
         long randomNumber = 10_000_000L + secureRandom.nextLong(90_000_000L);
