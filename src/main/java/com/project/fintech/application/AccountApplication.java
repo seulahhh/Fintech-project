@@ -46,7 +46,7 @@ public class AccountApplication {
      * @return
      */
     @Transactional
-    public ResponseDto<AccountDto> executeSoftDeleteAccount(Long accountId) {
+    public ResponseDto<AccountDto> executeDeleteAccount(Long accountId) {
         String userEmail = SecurityContextHolder.getContext().getAuthentication().getName();
         User user = accountService.getUserByEmail(userEmail);
         Account account = accountService.getAccountById(accountId);

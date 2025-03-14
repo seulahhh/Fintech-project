@@ -79,7 +79,7 @@ public class AccountService {
         if (user.getAccount().stream().noneMatch(userAccount -> userAccount == account)) {
             throw new CustomException(ErrorCode.ACCOUNT_USER_MISMATCH);
         }
-        account.setStatusDisable();
+        account.disabled();
         moveTransactionsToArchive(account);
     }
 

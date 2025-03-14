@@ -75,7 +75,7 @@ public class User extends BaseEntity implements UserDetails {
         isVerifiedEmail = verifiedEmail;
     }
 
-    public void setOtpRegistered(Boolean otpRegistered) {
+    public void toggleOtpRegistration(Boolean otpRegistered) {
         isOtpRegistered = otpRegistered;
     }
 

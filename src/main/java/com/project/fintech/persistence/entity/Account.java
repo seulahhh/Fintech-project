@@ -47,7 +47,7 @@ public class Account extends BaseEntity {
     @Default
     private Status status = Status.ACTIVE;
 
-    public void setStatusDisable() {
+    public void disabled() {
         this.status = Status.DISABLED;
     }
 }
