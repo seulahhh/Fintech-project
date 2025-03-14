@@ -58,6 +58,20 @@ public class AccountService {
     }
 
     /**
+     * 사용자가 보유한 모든 계좌 조회
+     *
+     * @param user
+     * @return User Account List
+     */
+    public List<Account> getUserAccounts(User user) {
+        List<Account> userAccounts = accountRepository.findActiveAccounts(user);
+        if (userAccounts.isEmpty()) {
+            throw new CustomException(ErrorCode.ACCOUNT_NOT_FOUND);
+        }
+        return userAccounts;
+    }
+
+    /**
      * 계좌 생성하기
      *
      * @param user
@@ -65,7 +79,7 @@ public class AccountService {
      */
     @Transactional
     public Account createAccount(User user) {
-        long accountCounts = accountRepository.countByUser(user);
+        long accountCounts = accountRepository.countActiveAccountsByUser(user);
         if (accountCounts >= MAX_ACCOUNT_COUNT) {
             throw new CustomException(ErrorCode.ACCOUNT_CREATION_LIMIT_EXCEEDED);
         }

@@ -125,7 +125,7 @@ class AccountServiceTest {
         Account account = new AccountTestDataBuilder().build();
         User user = new UserTestDataBuilder().withAccounts(new ArrayList<>(List.of(account)))
             .build();
-        when(accountRepository.countByUser(any())).thenReturn(1L);
+        when(accountRepository.countActiveAccountsByUser(any())).thenReturn(1L);
 
         //when
         Account newAccount = accountService.createAccount(user);
@@ -142,7 +142,7 @@ class AccountServiceTest {
     void createAccount_Fail_WhenAccountCreationLimitExceeded() {
         //given
         User user = new UserTestDataBuilder().build();
-        when(accountRepository.countByUser(any())).thenReturn(MAX_ACCOUNT_COUNT);
+        when(accountRepository.countActiveAccountsByUser(user)).thenReturn(MAX_ACCOUNT_COUNT);
 
         //when & then
         assertThatThrownBy(() -> accountService.createAccount(user)).isInstanceOf(
