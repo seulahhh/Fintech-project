@@ -91,13 +91,13 @@ public class AccountService {
      */
     private void moveTransactionsToArchive(Account account) {
         List<Transaction> transactionsList = account.getTransactions();
-
-        if (!transactionsList.isEmpty()) {
-            List<ArchivedTransaction> archivedTransactionList = transactionsList.stream()
-                .map(transactionMapper::toArchivedTransactions).toList();
-            archivedTransactionRepository.saveAll(archivedTransactionList);
-            account.getTransactions().clear();
+        if (transactionsList.isEmpty()) {
+            return;
         }
+        List<ArchivedTransaction> archivedTransactionList = transactionsList.stream()
+            .map(transactionMapper::toArchivedTransactions).toList();
+        archivedTransactionRepository.saveAll(archivedTransactionList);
+        account.clearTransactions();
     }
 
     /**
