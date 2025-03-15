@@ -84,8 +84,8 @@ public class AccountService {
             throw new CustomException(ErrorCode.ACCOUNT_CREATION_LIMIT_EXCEEDED);
         }
         Account account = Account.builder().accountNumber(createAccountNumber()).user(user).build();
-        user.addAccount(account);
-        return account;
+
+        return accountRepository.save(account); // id값이 세팅된 상태의 account 를 반환하기 위함
     }
 
     /**
