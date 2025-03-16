@@ -53,6 +53,7 @@ import redis.embedded.RedisServer;
 @TestInstance(Lifecycle.PER_CLASS)
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
+@Transactional
 public class AuthIntegrationTest {
 
     public static final String DISABLED_TOKEN_PREFIX = "JWT_BLACKLIST::";
@@ -85,14 +86,11 @@ public class AuthIntegrationTest {
     @Autowired
     private OtpSecretKeyRepository otpSecretKeyRepository;
 
-
     @BeforeAll
     public void setUp() throws Exception {
         User testUser = User.builder().name("name").phone("01010001000")
             .email("prinarrow1219@gmail.com").isVerifiedEmail(true).isOtpRegistered(true)
             .password(passwordEncoder.encode("11111111")).build();
-//        otpSecretKeyRepository.save();
-//
 
         userRepository.save(testUser);
         redisServer = new RedisServer(6300);
@@ -111,7 +109,6 @@ public class AuthIntegrationTest {
 
     @Test
     @DisplayName("Login - 성공")
-    @Transactional
     void loginTestWithGenerateTokens_Success() throws Exception {
         //given
         String userEmail = "prinarrow1219@gmail.com";
@@ -200,7 +197,6 @@ public class AuthIntegrationTest {
     @Test
     @DisplayName("OTP 인증이 필요한 URL에 대한 OTP code 검증하는 흐름")
     @WithMockUser(username = "testUser@test.com", roles = {"USER"})
-    @Transactional
     void verifyOtpCodeTest_Success() throws Exception {
         //given
         GoogleAuthenticator gAuth = new GoogleAuthenticator();
@@ -229,7 +225,6 @@ public class AuthIntegrationTest {
 
     @Test
     @DisplayName("OTP secret key를 재발급 하는 흐름")
-    @Transactional
     @WithMockUser(username = "testUser@test.com", roles = {"USER"})
     void reIssueOtpSecretKeyAndInvalidateOlderKeyTest_Success() throws Exception {
         //given
