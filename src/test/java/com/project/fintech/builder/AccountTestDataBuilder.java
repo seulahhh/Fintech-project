@@ -16,13 +16,13 @@ public class AccountTestDataBuilder {
     private Status status;
 
     public AccountTestDataBuilder() {
-        this.id = 7L;
         this.user = new UserTestDataBuilder().build();
         this.transactions = Collections.emptyList();
         this.accountNumber = "177256143201";
         this.balance = 1000L;
         this.status = Status.ACTIVE;
     }
+
 
     public AccountTestDataBuilder withTransactions(List<Transaction> transactions) {
         this.transactions = transactions;
@@ -44,9 +44,13 @@ public class AccountTestDataBuilder {
         return this;
     }
 
+    public AccountTestDataBuilder withUser(User user) {
+        this.user = user;
+        return this;
+    }
+
     public Account build() {
         return Account.builder()
-            .id(id)
             .status(status)
             .transactions(transactions)
             .user(user)

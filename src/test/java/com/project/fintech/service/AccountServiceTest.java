@@ -108,7 +108,7 @@ class AccountServiceTest {
     }
 
     @Test
-    @DisplayName("accountId로 Account 가져오기 - 실패")
+    @DisplayName("accountId로 Account 가져오기 - 실패 - 계좌를 찾지 못했을 때")
     void getAccountById_Fail_WhenAccountNotFound() {
         //given
         Long accountId = 1L;
