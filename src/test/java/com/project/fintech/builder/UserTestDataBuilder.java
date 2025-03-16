@@ -71,7 +71,6 @@ public class UserTestDataBuilder {
 
     public User build() {
         return User.builder()
-            .id(id)
             .email(email)
             .account(accounts)
             .password(password)
