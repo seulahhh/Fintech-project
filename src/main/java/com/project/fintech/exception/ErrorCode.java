@@ -27,7 +27,8 @@ public enum ErrorCode {
     ACCOUNT_NOT_FOUND("계좌를 찾을 수 없습니다.", "ACCOUNT-001", HttpStatus.BAD_REQUEST),
     ACCOUNT_CREATION_LIMIT_EXCEEDED("최대 계설 가능 개수를 초과하였습니다", "ACCOUNT-002", HttpStatus.BAD_REQUEST),
     ACCOUNT_USER_MISMATCH(
-        "계좌번호와 사용자의 정보가 일치하지 않습니다.", "ACCUONT-003", HttpStatus.BAD_REQUEST);
+        "계좌번호와 사용자의 정보가 일치하지 않습니다.", "ACCUONT-003", HttpStatus.BAD_REQUEST),
+    ACCOUNT_BALANCE_NOT_ZERO("게좌의 잔액이 남아있습니다.", "ACCOUNT-004", HttpStatus.BAD_REQUEST);
 
     private final String detail;
     private final String code;

@@ -23,6 +23,7 @@ import com.project.fintech.persistence.repository.ArchivedTransactionRepository;
 import com.project.fintech.persistence.repository.TransactionRepository;
 import com.project.fintech.persistence.repository.UserRepository;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
@@ -107,7 +108,7 @@ class AccountServiceTest {
     }
 
     @Test
-    @DisplayName("accountId로 Account 가져오기 - 실패")
+    @DisplayName("accountId로 Account 가져오기 - 실패 - 계좌를 찾지 못했을 때")
     void getAccountById_Fail_WhenAccountNotFound() {
         //given
         Long accountId = 1L;
@@ -125,7 +126,7 @@ class AccountServiceTest {
         Account account = new AccountTestDataBuilder().build();
         User user = new UserTestDataBuilder().withAccounts(new ArrayList<>(List.of(account)))
             .build();
-        when(accountRepository.countByUser(any())).thenReturn(1L);
+        when(accountRepository.countActiveAccountsByUser(any())).thenReturn(1L);
 
         //when
         Account newAccount = accountService.createAccount(user);
@@ -133,7 +134,7 @@ class AccountServiceTest {
         //then
         List<Account> userAccounts = user.getAccount();
         assertThat(newAccount.getAccountNumber()).startsWith(SERVICE_CODE);
-        assertThat(userAccounts.size()).isEqualTo(2);
+        assertThat(newAccount.getAccountNumber().length()).isEqualTo(12);
         assertThat(userAccounts.stream().anyMatch(x -> x.equals(newAccount))).isTrue();
     }
 
@@ -142,7 +143,7 @@ class AccountServiceTest {
     void createAccount_Fail_WhenAccountCreationLimitExceeded() {
         //given
         User user = new UserTestDataBuilder().build();
-        when(accountRepository.countByUser(any())).thenReturn(MAX_ACCOUNT_COUNT);
+        when(accountRepository.countActiveAccountsByUser(user)).thenReturn(MAX_ACCOUNT_COUNT);
 
         //when & then
         assertThatThrownBy(() -> accountService.createAccount(user)).isInstanceOf(
@@ -184,5 +185,31 @@ class AccountServiceTest {
         assertThatThrownBy(() -> accountService.deleteAccount(user, otherAccount)).isInstanceOf(
                 CustomException.class).extracting("errorCode")
             .isEqualTo(ErrorCode.ACCOUNT_USER_MISMATCH);
+    }
+
+    @Test
+    @DisplayName("사용자의 보유 계좌 목록 조회 - 성공")
+    void getUserAccounts_Success() {
+        //given
+        User user = new UserTestDataBuilder().build();
+        Account account = new AccountTestDataBuilder().build();
+        when(accountRepository.findByUserAndStatus(user, Status.ACTIVE)).thenReturn(List.of(account));
+
+        //when
+        accountService.getUserAccounts(user);
+
+        //then
+        verify(accountRepository, times(1)).findByUserAndStatus(user, Status.ACTIVE);
+    }
+
+    @Test
+    @DisplayName("사용자의 보유 계좌 목록 조회 - 실패 - 사용자의 계좌가 없을 때")
+    void getUserAccounts_Fail_WhenUserAccountNotFound() {
+        //given
+        User user = new UserTestDataBuilder().withAccounts(Collections.emptyList()).build();
+
+        //awhen & then
+        assertThatThrownBy(() -> accountService.getUserAccounts(user)).isInstanceOf(CustomException.class)
+            .extracting("errorCode").isEqualTo(ErrorCode.ACCOUNT_NOT_FOUND);
     }
 }

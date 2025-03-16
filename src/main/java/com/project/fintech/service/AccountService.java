@@ -3,6 +3,7 @@ package com.project.fintech.service;
 import com.project.fintech.exception.CustomException;
 import com.project.fintech.exception.ErrorCode;
 import com.project.fintech.model.dto.domain.TransactionMapper;
+import com.project.fintech.model.type.Status;
 import com.project.fintech.persistence.entity.Account;
 import com.project.fintech.persistence.entity.ArchivedTransaction;
 import com.project.fintech.persistence.entity.Transaction;
@@ -48,8 +49,26 @@ public class AccountService {
      */
     @Transactional
     public Account getAccountById(Long accountId) {
-        return accountRepository.findById(accountId)
+        Account account = accountRepository.findById(accountId)
             .orElseThrow(() -> new CustomException(ErrorCode.ACCOUNT_NOT_FOUND));
+        if (account.getStatus() == Status.DISABLED) {
+            throw new CustomException(ErrorCode.ACCOUNT_NOT_FOUND);
+        }
+        return account;
+    }
+
+    /**
+     * 사용자가 보유한 모든 계좌 조회
+     *
+     * @param user
+     * @return User Account List
+     */
+    public List<Account> getUserAccounts(User user) {
+        List<Account> userAccounts = accountRepository.findActiveAccounts(user);
+        if (userAccounts.isEmpty()) {
+            throw new CustomException(ErrorCode.ACCOUNT_NOT_FOUND);
+        }
+        return userAccounts;
     }
 
     /**
@@ -60,13 +79,13 @@ public class AccountService {
      */
     @Transactional
     public Account createAccount(User user) {
-        long accountCounts = accountRepository.countByUser(user);
+        long accountCounts = accountRepository.countActiveAccountsByUser(user);
         if (accountCounts >= MAX_ACCOUNT_COUNT) {
             throw new CustomException(ErrorCode.ACCOUNT_CREATION_LIMIT_EXCEEDED);
         }
         Account account = Account.builder().accountNumber(createAccountNumber()).user(user).build();
-        user.addAccount(account);
-        return account;
+
+        return accountRepository.save(account); // id값이 세팅된 상태의 account 를 반환하기 위함
     }
 
     /**
@@ -79,6 +98,9 @@ public class AccountService {
     public void deleteAccount(User user, Account account) {
         if (user.getAccount().stream().noneMatch(userAccount -> userAccount == account)) {
             throw new CustomException(ErrorCode.ACCOUNT_USER_MISMATCH);
+        }
+        if (account.getBalance() > 0L) {
+            throw new CustomException(ErrorCode.ACCOUNT_BALANCE_NOT_ZERO);
         }
         account.disabled();
         moveTransactionsToArchive(account);

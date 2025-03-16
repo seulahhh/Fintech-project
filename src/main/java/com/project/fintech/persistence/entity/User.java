@@ -43,7 +43,7 @@ public class User extends BaseEntity implements UserDetails {
     @OneToOne (mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private OtpSecretKey otpSecretKey;
 
-    @OneToMany (mappedBy = "user")
+    @OneToMany (mappedBy = "user",  cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<Account> account = new ArrayList<>();
 
